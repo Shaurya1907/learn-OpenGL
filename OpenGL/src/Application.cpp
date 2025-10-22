@@ -1,11 +1,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <stb/stb_image.h>
-
+#include<vector>
 
 #include<fstream>
 #include<sstream>
@@ -16,16 +13,26 @@
 #include<glm/gtc/type_ptr.hpp>
 #include<glm/gtc/matrix_transform.hpp>
 
+#include"Window.h"
 #include"Shader.h"
+#include"Mesh.h"
 
 #include"io/keyboard.h"
 #include"io/mouse.h"
 #include"io/Joystick.h"
 #include"io/camera.h"
 
-float mixVal = 0.5f;
+std::vector<Mesh*> meshList;
+std::vector<Window>windowList;
 
 glm::mat4 mouseTransform = glm::mat4(1.0f);
+
+Camera cameras[2] = {
+    Camera(glm::vec3(0.0f, 0.0f, 3.0f)),
+    Camera(glm::vec3(10.0f, 10.0f, 10.0f))
+};
+
+int activeCam = 0;
 
 glm::mat4 transform = glm::mat4(1.0f);
 Joystick mainJ(0);
@@ -43,54 +50,44 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 	SCR_HEIGHT = height;
 }
 
-void processInput(GLFWwindow* window, double dt)
+void processInput(GLFWwindow* mainWindow, double dt)
 {
     if (Keyboard::key(GLFW_KEY_ESCAPE))
-        glfwSetWindowShouldClose(window, true);
+        glfwSetWindowShouldClose(mainWindow, true);
 
-    // change mix value
-    if (Keyboard::keyWentDown(GLFW_KEY_UP)) {
-        mixVal += 0.5f;
-        if (mixVal >= 1.0f) {
-            mixVal = 1.0f;
-        }
-    }
-    if (Keyboard::keyWentDown(GLFW_KEY_DOWN)) {
-        mixVal -= 0.5f;
-        if (mixVal < 0.0f) {
-            mixVal = 0.0f;
-        }
+    if (Keyboard::keyWentDown(GLFW_KEY_TAB)) {
+        activeCam += (activeCam == 0) ? 1 : -1;
     }
     
     //move camera
     if (Keyboard::key(GLFW_KEY_W)) {
-        camera.updateCameraPos(CameraDirection::FORWARD, dt);
+        cameras[activeCam].updateCameraPos(CameraDirection::FORWARD, dt);
     }
     if (Keyboard::key(GLFW_KEY_S)) {
-        camera.updateCameraPos(CameraDirection::BACKWARD, dt);
+        cameras[activeCam].updateCameraPos(CameraDirection::BACKWARD, dt);
     }
     if (Keyboard::key(GLFW_KEY_D)) {
-        camera.updateCameraPos(CameraDirection::RIGHT, dt);
+        cameras[activeCam].updateCameraPos(CameraDirection::RIGHT, dt);
     }
     if (Keyboard::key(GLFW_KEY_A)) {
-        camera.updateCameraPos(CameraDirection::LEFT, dt);
+        cameras[activeCam].updateCameraPos(CameraDirection::LEFT, dt);
     }
     if (Keyboard::key(GLFW_KEY_SPACE)) {
-        camera.updateCameraPos(CameraDirection::UP, dt);
+        cameras[activeCam].updateCameraPos(CameraDirection::UP, dt);
     }
     if (Keyboard::key(GLFW_KEY_LEFT_SHIFT)) {
-        camera.updateCameraPos(CameraDirection::DOWN, dt);
+        cameras[activeCam].updateCameraPos(CameraDirection::DOWN, dt);
     }
 	mainJ.update();
 
     double dx = Mouse::getDX(), dy = Mouse::getDY();
     if (dx != 0 || dy != 0) {
-        camera.updateCameraDirection(dx, dy);
+        cameras[activeCam].updateCameraDirection(dx, dy);
     }
 
     double scrollDy = Mouse::getScrollY();
     if (scrollDy != 0) {
-        camera.updateCameraZoom(scrollDy);
+        cameras[activeCam].updateCameraZoom(scrollDy);
     }
 }
 
@@ -98,158 +95,80 @@ int main() {
     int success;
     char infoLog[512];
 
-    if (!glfwInit()) {
-        std::cout << "Failed to initialize GLFW" << std::endl;
+	Window mainWindow(800, 600);
+    if (mainWindow.Initialise() != 0) {
+        std::cerr << "Failed to initialize window" << std::endl;
         return -1;
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "OpenGL Window", nullptr, nullptr);
-    if (window == nullptr) {
-        std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
-    }
-    glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(mainWindow.getWindow(), framebuffer_size_callback);
 
     // keyboard input
-    glfwSetKeyCallback(window, Keyboard::keyCallback);
+    glfwSetKeyCallback(mainWindow.getWindow(), Keyboard::keyCallback);
 
 	// mouse input
-    glfwSetCursorPosCallback(window, Mouse::cursorPosCallback);
-	glfwSetMouseButtonCallback(window, Mouse::mouseButtonCallback);
-	glfwSetScrollCallback(window, Mouse::scrollCallback);
+    glfwSetCursorPosCallback(mainWindow.getWindow(), Mouse::cursorPosCallback);
+	glfwSetMouseButtonCallback(mainWindow.getWindow(), Mouse::mouseButtonCallback);
+	glfwSetScrollCallback(mainWindow.getWindow(), Mouse::scrollCallback);
 
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        std::cout << "Failed to initialize GLAD" << std::endl;
-        return -1;
-    }
-
-    glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-
-	glEnable(GL_DEPTH_TEST);
+    glfwSetInputMode(mainWindow.getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	Shader shader("assets/vertex_core.glsl", "assets/fragment_core1.glsl");
 
     float vertices[] = {
-    //Position        //texture coords
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+    //Position        
+    -0.5f, -0.5f, -0.5f,  
+     0.5f, -0.5f, -0.5f,  
+     0.5f,  0.5f, -0.5f,  
+     0.5f,  0.5f, -0.5f,  
+    -0.5f,  0.5f, -0.5f,  
+    -0.5f, -0.5f, -0.5f,  
 
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f,  
+     0.5f, -0.5f,  0.5f,  
+     0.5f,  0.5f,  0.5f,  
+     0.5f,  0.5f,  0.5f,  
+    -0.5f,  0.5f,  0.5f,  
+    -0.5f, -0.5f,  0.5f,  
 
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  
+    -0.5f,  0.5f, -0.5f,  
+    -0.5f, -0.5f, -0.5f,  
+    -0.5f, -0.5f, -0.5f,  
+    -0.5f, -0.5f,  0.5f,  
+    -0.5f,  0.5f,  0.5f,  
 
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  
+     0.5f,  0.5f, -0.5f,  
+     0.5f, -0.5f, -0.5f,  
+     0.5f, -0.5f, -0.5f,  
+     0.5f, -0.5f,  0.5f,  
+     0.5f,  0.5f,  0.5f,  
 
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  
+     0.5f, -0.5f, -0.5f,  
+     0.5f, -0.5f,  0.5f,  
+     0.5f, -0.5f,  0.5f,  
+    -0.5f, -0.5f,  0.5f,  
+    -0.5f, -0.5f, -0.5f,  
 
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+    -0.5f,  0.5f, -0.5f,  
+     0.5f,  0.5f, -0.5f,  
+     0.5f,  0.5f,  0.5f,  
+     0.5f,  0.5f,  0.5f,  
+    -0.5f,  0.5f,  0.5f,  
+    -0.5f,  0.5f, -0.5f 
     };
 
-    // VAO, VBO setup
-    unsigned int VAO, VBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
+	Mesh* obj1 = new Mesh();
+	obj1->CreateMesh(vertices, sizeof(vertices) / sizeof(vertices[0]));
+    meshList.push_back(obj1);
 
-    glBindVertexArray(VAO);
-
-    // Vertex buffer
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // Vertex attributes
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    // texture coordinates
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
-
-    // textures
-	unsigned int texture, texture1;
-
-	glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-    // load image
-	int width, height, nrChannels;
-    unsigned char* data = stbi_load("assets/image.png", &width, &height, &nrChannels, 0);
-    if (data) {
-        GLenum format = nrChannels == 4 ? GL_RGBA : GL_RGB;
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else {
-        std::cout << "Failed to load texture" << std::endl;
-    }
-    stbi_image_free(data);
-
-    glGenTextures(1, &texture1);
-    glBindTexture(GL_TEXTURE_2D, texture1);
-
-    data = stbi_load("assets/image1.png", &width, &height, &nrChannels, 0);
-    if (data) {
-        GLenum format = nrChannels == 4 ? GL_RGBA : GL_RGB;
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else {
-        std::cout << "Failed to load texture" << std::endl;
-    }
-    stbi_image_free(data);
+    Mesh* obj2 = new Mesh();
+    obj2->CreateMesh(vertices, sizeof(vertices) / sizeof(vertices[0]));
+    meshList.push_back(obj2);
 
 	shader.activate();  
-	shader.setInt("ourTexture", 0);
-	shader.setInt("ourTexture1", 1);
-
-    /*glm::mat4 trans = glm::mat4(1.0f);
-    trans = glm::rotate(trans, glm::radians(45.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-    trans = glm::rotate(trans, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	shader.activate();
-    shader.setMat4("transform", trans);*/
 
     x = 0.0F;
 	y = 0.0F;
@@ -263,66 +182,58 @@ int main() {
 		std::cout << "Not present." << std::endl;
     }
 
-
     // Render loop
-    while (!glfwWindowShouldClose(window)) {
+    while (!mainWindow.getShouldClose()) {
 
         double currentTime = glfwGetTime();
         deltaTime = currentTime - lastFrame;
         lastFrame = currentTime;
 
         // process input
-        processInput(window, deltaTime);
+        processInput(mainWindow.getWindow(), deltaTime);
 
         // render
         glClearColor(0.4, 0.4, 0.4, 1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texture);
-
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, texture1);
-
-		//trans = glm::rotate(trans, glm::radians((float)glfwGetTime() / 1000.0f), glm::vec3(0.0f, 0.0f, 0.1f));
-        //shader.setMat4("transform", trans);
-
-        glBindVertexArray(VAO);
+        shader.activate();
 
         //create transformation for screen
-		glm::mat4 model = glm::mat4(1.0f);
         glm::mat4 view = glm::mat4(1.0f);
         glm::mat4 projection = glm::mat4(1.0f);
 
-		model = glm::rotate(model, (float)glfwGetTime() * glm::radians(-55.0f), glm::vec3(0.5f));
 		//view = glm::translate(view, glm::vec3(-x, -y, -z));
-        view = camera.getViewMatrix();
-        projection = glm::perspective(glm::radians(camera.zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        view = cameras[activeCam].getViewMatrix();
+        projection = glm::perspective(glm::radians(cameras[activeCam].zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 
-        shader.activate();
-
-		shader.setMat4("model", model);
 		shader.setMat4("view", view);
 		shader.setMat4("projection", projection);
 
-        shader.setFloat("mixVal", mixVal);
-        
-        //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        //glm::mat4 model = trans * transform;
-        //shader.setMat4("transform", model);
+        //--- First CUBE at origin
+        glm::mat4 model = glm::mat4(1.0f);
+        shader.setMat4("model", model);
+        meshList[0]->RenderMesh();
 
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        //--- Second CUBE translated+X
+        glm::mat4 model2 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
+        model2 = glm::rotate(model2, (float)glfwGetTime(), glm::vec3(1.0f, 1.0f, 0.0f)); // Rotating around Y axis
+        shader.setMat4("model", model2);
+        meshList[1]->RenderMesh();
 
 		glBindVertexArray(0);
 
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+		mainWindow.swapBuffers();
+		mainWindow.pollEvents();
     }
 
-    // Cleanup
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-   
-    glfwTerminate();
+    // Cleanup BOTH meshes before exit
+    for (auto mesh : meshList) {
+        if (mesh) {
+            mesh->ClearMesh();
+            delete mesh;
+        }
+    }
+    meshList.clear();
+
     return 0;
 }
