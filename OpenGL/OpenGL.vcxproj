@@ -139,6 +139,7 @@
     <ClCompile Include="src\glad.c" />
     <ClCompile Include="src\stb.cpp" />
     <ClCompile Include="src\Window.cpp" />
+    <ClCompile Include="src\Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="assets\fragment_core1.glsl" />
@@ -153,10 +154,13 @@
     <ClInclude Include="src\io\mouse.h" />
     <ClInclude Include="src\Shader.h" />
     <ClInclude Include="src\Window.h" />
+    <ClInclude Include="src\Texture.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\image.png" />
     <Image Include="assets\image1.png" />
+    <Image Include="assets\Textures\brick.png" />
+    <Image Include="assets\Textures\dirt.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

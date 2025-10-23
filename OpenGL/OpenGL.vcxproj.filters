@@ -45,6 +45,9 @@
     <ClCompile Include="src\Window.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Texture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="assets\fragment_core1.glsl" />
@@ -73,12 +76,21 @@
     <ClInclude Include="src\Window.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\Texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\image.png">
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="assets\image1.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="assets\Textures\brick.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="assets\Textures\dirt.png">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
