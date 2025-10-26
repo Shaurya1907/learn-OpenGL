@@ -1,86 +1,161 @@
-#include"Shader.h"
+#include "Shader.h"
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <glm/gtc/type_ptr.hpp>
 
-Shader::Shader(const char* vertexShaderPath, const char* fragmentShaderPath) {
-    int success;
-    char infoLog[512];
+Shader::Shader()
+{
+    shaderID = 0;
+    uniformProjection = 0;
+    uniformView = 0;
+    uniformModel = 0;
+}
 
-    GLuint vertexShader = compileShader(vertexShaderPath, GL_VERTEX_SHADER);
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        std::cout << "Error with vertex shader compilation: \n" << infoLog << std::endl;
+void Shader::CreateFromFiles(const char* vertexShaderPath, const char* fragmentShaderPath)
+{
+    std::string vertexString = ReadFile(vertexShaderPath);
+    std::string fragmentString = ReadFile(fragmentShaderPath);
+    const char* vertexCode = vertexString.c_str();
+    const char* fragmentCode = fragmentString.c_str();
+
+    CompileShader(vertexCode, fragmentCode);
+}
+
+std::string Shader::ReadFile(const char* fileLocation)
+{
+    std::string content;
+    std::ifstream fileStream(fileLocation);
+
+    if (!fileStream.is_open()) {
+        std::cout << "Could not read file " << fileLocation << ". File does not exist." << std::endl;
+        return "";
     }
 
-    GLuint fragmentShader = compileShader(fragmentShaderPath, GL_FRAGMENT_SHADER);
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::cout << "Error with fragment shader compilation: \n" << infoLog << std::endl;
+    std::string line = "";
+    while (std::getline(fileStream, line)) {
+        content.append(line + "\n");
     }
 
-    id = glCreateProgram();
-    glAttachShader(id, vertexShader);
-    glAttachShader(id, fragmentShader);
-    glLinkProgram(id);
-    glGetProgramiv(id, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(id, 512, NULL, infoLog);
-        std::cout << "Error linking shader program: \n" << infoLog << std::endl;
+    fileStream.close();
+    return content;
+}
+
+void Shader::CompileShader(const char* vertexCode, const char* fragmentCode)
+{
+    shaderID = glCreateProgram();
+
+    if (!shaderID) {
+        std::cout << "Error creating shader program!" << std::endl;
+        return;
     }
 
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    AddShader(shaderID, vertexCode, GL_VERTEX_SHADER);
+    AddShader(shaderID, fragmentCode, GL_FRAGMENT_SHADER);
+
+    GLint result = 0;
+    GLchar eLog[1024] = { 0 };
+
+    glLinkProgram(shaderID);
+    glGetProgramiv(shaderID, GL_LINK_STATUS, &result);
+    if (!result) {
+        glGetProgramInfoLog(shaderID, sizeof(eLog), NULL, eLog);
+        std::cout << "Error linking program: " << eLog << std::endl;
+        return;
+    }
+
+    glValidateProgram(shaderID);
+    glGetProgramiv(shaderID, GL_VALIDATE_STATUS, &result);
+    if (!result) {
+        glGetProgramInfoLog(shaderID, sizeof(eLog), NULL, eLog);
+        std::cout << "Error validating program: " << eLog << std::endl;
+        return;
+    }
+
+    uniformProjection = glGetUniformLocation(shaderID, "projection");
+    uniformView = glGetUniformLocation(shaderID, "view");
+    uniformModel = glGetUniformLocation(shaderID, "model");
+
+    uniformAmbientColour = glGetUniformLocation(shaderID, "directionalLight.colour");
+    uniformAmbientIntensity = glGetUniformLocation(shaderID, "directionalLight.ambientIntensity");
 }
 
-void Shader::activate() {
-	glUseProgram(id);
-}	
-
-std::string Shader::loadShaderSrc(const char* filename) {
-	std::ifstream file;
-	std::stringstream buf;
-
-	std::string ret = "";
-
-	file.open(filename);
-
-	if (file.is_open()) {
-		buf << file.rdbuf();
-		ret = buf.str();
-	}
-	else {
-		std::cout << "Could not open file: " << filename << std::endl;
-	}
-	file.close();
-	return ret;
+void Shader::UseShader()
+{
+    glUseProgram(shaderID);
 }
 
-GLuint Shader::compileShader(const char* filepath, GLenum type) {
-	int success;
-	char infolog[512];
-
-	GLuint ret = glCreateShader(type);
-	std::string shaderSrc = loadShaderSrc(filepath);
-	const GLchar* shader = shaderSrc.c_str();
-	glShaderSource(ret, 1, &shader, NULL);
-	glCompileShader(ret);
-
-	glGetShaderiv(ret, GL_COMPILE_STATUS, &success);
-	if (!success) {
-		glGetShaderInfoLog(ret, 512, NULL, infolog);
-		std::cout << "Error with shader compilation: \n" << infolog << std::endl;
-	}
-	return ret;
+void Shader::ClearShader()
+{
+    if (shaderID != 0) {
+        glDeleteProgram(shaderID);
+        shaderID = 0;
+    }
+    uniformModel = 0;
+    uniformView = 0;
+    uniformProjection = 0;
 }
 
-void Shader::setMat4(const std::string& name, glm::mat4 val) {
-	glUniformMatrix4fv(glGetUniformLocation(id, name.c_str()), 1, GL_FALSE, glm::value_ptr(val));
+void Shader::AddShader(GLuint theProgram, const char* shaderCode, GLenum shaderType)
+{
+    GLuint theShader = glCreateShader(shaderType);
+
+    const GLchar* theCode[1];
+    theCode[0] = shaderCode;
+
+    GLint codeLength[1];
+    codeLength[0] = static_cast<GLint>(strlen(shaderCode));
+
+    glShaderSource(theShader, 1, theCode, codeLength);
+    glCompileShader(theShader);
+
+    GLint result = 0;
+    GLchar eLog[1024] = { 0 };
+
+    glGetShaderiv(theShader, GL_COMPILE_STATUS, &result);
+    if (!result) {
+        glGetShaderInfoLog(theShader, sizeof(eLog), NULL, eLog);
+        std::cout << "Error compiling the " << shaderType << " shader: " << eLog << std::endl;
+        return;
+    }
+
+    glAttachShader(theProgram, theShader);
 }
 
-void Shader::setInt(const std::string& name, int value) {
-    glUniform1i(glGetUniformLocation(id, name.c_str()), value);
+GLuint Shader::GetProjectionLocation()
+{
+    return uniformProjection;
 }
 
-void Shader::setFloat(const std::string& name, float value) {
-	glUniform1f(glGetUniformLocation(id, name.c_str()), value);
+GLuint Shader::GetViewLocation()
+{
+    return uniformView;
+}
+
+GLuint Shader::GetModelLocation()
+{
+    return uniformModel;
+}
+GLuint Shader::GetAmbientColourLocation()
+{
+    return uniformAmbientColour;
+}
+GLuint Shader::GetAmbientIntensityLocation()
+{
+    return uniformAmbientIntensity;
+}
+
+void Shader::setMat4(const std::string& name, const glm::mat4& mat)
+{
+    glUniformMatrix4fv(glGetUniformLocation(shaderID, name.c_str()), 1, GL_FALSE, glm::value_ptr(mat));
+}
+
+void Shader::setInt(const std::string& name, int value)
+{
+    glUniform1i(glGetUniformLocation(shaderID, name.c_str()), value);
+}
+
+Shader::~Shader()
+{
+    ClearShader();
 }

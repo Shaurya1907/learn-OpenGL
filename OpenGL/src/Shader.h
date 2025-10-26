@@ -1,31 +1,44 @@
 #ifndef SHADER_H
 #define SHADER_H
 
-#include<glad/glad.h>
-
-#include<fstream>
-#include<sstream>
-#include<string>
-#include<iostream>
-
-#include<glm/glm.hpp>
-#include<glm/gtc/type_ptr.hpp>
+#include <glad/glad.h>
+#include <glm/glm.hpp>
+#include <string>
 
 class Shader {
 public:
-	unsigned int id;
+    Shader();
+    ~Shader();
 
-	Shader(const char* vertexShaderPath, const char* fragmentShaderPath);
-	void activate();
+    void CreateFromFiles(const char* vertexShaderPath, const char* fragmentShaderPath);
+    void UseShader();
+    void ClearShader();
 
-	// utility functions
-	std::string loadShaderSrc(const char* filepath);
-	GLuint compileShader(const char* filepath, GLenum type);
+    // Uniform setters
+    void setMat4(const std::string& name, const glm::mat4& mat);
+    void setInt(const std::string& name, int value);
 
-	// uniform functions
-	void setMat4(const std::string& name, glm::mat4 val);
-	void setInt(const std::string& name, int value);
-	void setFloat(const std::string& name, float value);
+    // Utility functions
+    std::string ReadFile(const char* fileLocation);
+
+    // Get uniform locations for direct OpenGL use
+    GLuint GetProjectionLocation();
+    GLuint GetViewLocation();
+    GLuint GetModelLocation();
+
+    GLuint GetAmbientIntensityLocation();
+	GLuint GetAmbientColourLocation();
+
+private:
+    GLuint shaderID;
+    GLuint uniformProjection;
+    GLuint uniformView;
+    GLuint uniformModel;
+
+	GLuint uniformAmbientIntensity, uniformAmbientColour;
+
+    void CompileShader(const char* vertexCode, const char* fragmentCode);
+    void AddShader(GLuint theProgram, const char* shaderCode, GLenum shaderType);
 };
 
 #endif

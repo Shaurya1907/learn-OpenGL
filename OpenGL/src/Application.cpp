@@ -3,10 +3,12 @@
 #include <iostream>
 #include <stb/stb_image.h>
 #include <vector>
+
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <streambuf>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -15,6 +17,7 @@
 #include "Shader.h"
 #include "Mesh.h"
 #include "Texture.h"
+#include "Light.h"
 
 #include "io/keyboard.h"
 #include "io/mouse.h"
@@ -22,10 +25,12 @@
 #include "io/camera.h"
 
 std::vector<Mesh*> meshList;
+std::vector<Shader> shaderList;
 std::vector<Window> windowList;
 
 glm::mat4 mouseTransform = glm::mat4(1.0f);
 
+// Cameras
 Camera cameras[2] = {
     Camera(glm::vec3(0.0f, 0.0f, 3.0f)),
     Camera(glm::vec3(10.0f, 10.0f, 10.0f))
@@ -33,8 +38,12 @@ Camera cameras[2] = {
 
 int activeCam = 0;
 
+// Textures
 Texture brickTexture;
 Texture dirtTexture;
+
+// Light
+Light mainLight;
 
 glm::mat4 transform = glm::mat4(1.0f);
 Joystick mainJ(0);
@@ -92,12 +101,12 @@ void processInput(GLFWwindow* mainWindow, double dt)
     }
 }
 
-void createObject()
+void CreateObject()
 {
     // Cube vertex data (position + texture coords)
     float vertices[] = {
         // position           // texture coords
-     -0.5f, -0.5f, -0.5f,   0.0f, 0.0f,
+    -0.5f, -0.5f, -0.5f,    0.0f, 0.0f,
      0.5f, -0.5f, -0.5f,    1.0f, 0.0f,
      0.5f,  0.5f, -0.5f,    1.0f, 1.0f,
      0.5f,  0.5f, -0.5f,    1.0f, 1.0f,
@@ -152,6 +161,13 @@ void createObject()
     std::cout << "Objects created and added to mesh list!" << std::endl;
 }
 
+void CreateShader()
+{
+	Shader* shader1 = new Shader();
+	shader1->CreateFromFiles("assets/vertex_core.glsl", "assets/fragment_core1.glsl");
+	shaderList.push_back(*shader1);
+}
+
 int main() {
     int success;
     char infoLog[512];
@@ -174,15 +190,19 @@ int main() {
 
     glfwSetInputMode(mainWindow.getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    Shader shader("assets/vertex_core.glsl", "assets/fragment_core1.glsl");
+    CreateShader();
+    CreateObject();
 
-    createObject();
-    shader.activate();
+    GLuint uniformProjection = 0, uniformView = 0, uniformModel = 0;
 
     brickTexture = Texture("assets/Textures/brick.png");
     brickTexture.LoadTexture();
     dirtTexture = Texture("assets/Textures/dirt.png");
     dirtTexture.LoadTexture();
+
+    mainLight = Light(1.0f, 1.0f, 1.0f, 0.2f);
+    GLuint uniformAmbientIntensity = 0;
+    GLuint uniformAmbientColour = 0;
 
     x = 0.0f;
     y = 0.0f;
@@ -212,32 +232,36 @@ int main() {
         glClearColor(0.4f, 0.4f, 0.4f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        shader.activate();
+        Shader& shader = shaderList[0];
+        shader.UseShader();
 
-        // create transformation for screen
-        glm::mat4 view = glm::mat4(1.0f);
-        glm::mat4 projection = glm::mat4(1.0f);
-
-        view = cameras[activeCam].getViewMatrix();
-        projection = glm::perspective(glm::radians(cameras[activeCam].zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 view = cameras[activeCam].getViewMatrix();
+        glm::mat4 projection = glm::perspective(glm::radians(cameras[activeCam].zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
+
+		uniformAmbientColour = shader.GetAmbientColourLocation();
+		uniformAmbientIntensity = shader.GetAmbientIntensityLocation();
+
+        mainLight.UseLight(
+            shader.GetAmbientIntensityLocation(),
+            shader.GetAmbientColourLocation()
+        );
 
         //--- First CUBE at origin
         glm::mat4 model = glm::mat4(1.0f);
         shader.setMat4("model", model);
         shader.setInt("theTexture", 0);
-        brickTexture.UseTexture(GL_TEXTURE0);
+        brickTexture.UseTexture();
         meshList[0]->RenderMesh();
-
 
         //--- Second CUBE translated+X
         glm::mat4 model2 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
         model2 = glm::rotate(model2, static_cast<float>(glfwGetTime()), glm::vec3(1.0f, 1.0f, 0.0f));
         shader.setMat4("model", model2);
-        shader.setInt("theTexture", 1);
-        dirtTexture.UseTexture(GL_TEXTURE1);
+        shader.setInt("theTexture", 0);
+        dirtTexture.UseTexture();
         meshList[1]->RenderMesh();
 
         glBindVertexArray(0);
