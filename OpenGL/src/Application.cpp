@@ -36,6 +36,13 @@ Camera cameras[2] = {
     Camera(glm::vec3(10.0f, 10.0f, 10.0f))
 };
 
+// Struct to hold vertex info (extend if needed)
+struct Vertex {
+    glm::vec3 position;
+    glm::vec3 normal = glm::vec3(0.0f);
+    glm::vec2 texCoord;
+};
+
 int activeCam = 0;
 
 // Textures
@@ -101,71 +108,121 @@ void processInput(GLFWwindow* mainWindow, double dt)
     }
 }
 
-void CreateObject()
+void calcAverageNormals(unsigned int* indices, unsigned int indiceCount, GLfloat* vertices, unsigned int verticeCount,
+    unsigned int vLength, unsigned int normalOffset)
 {
-    // Cube vertex data (position + texture coords)
-    float vertices[] = {
-        // position           // texture coords
-    -0.5f, -0.5f, -0.5f,    0.0f, 0.0f,
-     0.5f, -0.5f, -0.5f,    1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,    1.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,    1.0f, 1.0f,
-    -0.5f,  0.5f, -0.5f,    0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,    0.0f, 0.0f,
+    // Reset all normals to zero
+    for (size_t i = 0; i < verticeCount; i += vLength) {
+        vertices[i + normalOffset] = 0.0f;
+        vertices[i + normalOffset + 1] = 0.0f;
+        vertices[i + normalOffset + 2] = 0.0f;
+    }
 
-    -0.5f, -0.5f,  0.5f,    0.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,    1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,    1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,    1.0f, 1.0f,
-    -0.5f,  0.5f,  0.5f,    0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,    0.0f, 0.0f,
+    // Calculate face normals and accumulate them for each vertex of the triangle
+    for (size_t i = 0; i < indiceCount; i += 3) {
+        unsigned int in0 = indices[i] * vLength;
+        unsigned int in1 = indices[i + 1] * vLength;
+        unsigned int in2 = indices[i + 2] * vLength;
 
-    -0.5f,  0.5f,  0.5f,    1.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,    1.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,    0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,    0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,    0.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,    1.0f, 0.0f,
+        glm::vec3 v1(vertices[in1] - vertices[in0], vertices[in1 + 1] - vertices[in0 + 1], vertices[in1 + 2] - vertices[in0 + 2]);
+        glm::vec3 v2(vertices[in2] - vertices[in0], vertices[in2 + 1] - vertices[in0 + 1], vertices[in2 + 2] - vertices[in0 + 2]);
+        glm::vec3 normal = glm::cross(v1, v2);
+        normal = glm::normalize(normal);
 
-     0.5f,  0.5f,  0.5f,    1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,    1.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,    0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,    0.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,    0.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,    1.0f, 0.0f,
+        vertices[in0 + normalOffset] += normal.x;
+        vertices[in0 + normalOffset + 1] += normal.y;
+        vertices[in0 + normalOffset + 2] += normal.z;
 
-    -0.5f, -0.5f, -0.5f,    0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,    1.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,    1.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,    1.0f, 0.0f,
-    -0.5f, -0.5f,  0.5f,    0.0f, 0.0f,
-    -0.5f, -0.5f, -0.5f,    0.0f, 1.0f,
+        vertices[in1 + normalOffset] += normal.x;
+        vertices[in1 + normalOffset + 1] += normal.y;
+        vertices[in1 + normalOffset + 2] += normal.z;
 
-    -0.5f,  0.5f, -0.5f,    0.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,    1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,    1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,    1.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,    0.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,    0.0f, 1.0f
+        vertices[in2 + normalOffset] += normal.x;
+        vertices[in2 + normalOffset + 1] += normal.y;
+        vertices[in2 + normalOffset + 2] += normal.z;
+    }
+
+    // Normalize all accumulated normals
+    for (size_t i = 0; i < verticeCount; i += vLength) {
+        glm::vec3 vec(vertices[i + normalOffset], vertices[i + normalOffset + 1], vertices[i + normalOffset + 2]);
+        vec = glm::normalize(vec);
+        vertices[i + normalOffset] = vec.x;
+        vertices[i + normalOffset + 1] = vec.y;
+        vertices[i + normalOffset + 2] = vec.z;
+    }
+}
+
+void CreateObject() {
+    unsigned int indices[] = {
+        4, 5, 6, 6, 7, 4,   // Front face
+        0, 3, 2, 2, 1, 0,   // Back face
+        0, 4, 7, 7, 3, 0,   // Left face
+        1, 2, 6, 6, 5, 1,   // Right face
+        0, 1, 5, 5, 4, 0,   // Bottom face
+        3, 7, 6, 6, 2, 3    // Top face
     };
 
-    // Create two cube meshes
+    GLfloat vertices[] = {
+        // x      y      z       u     v   nx ny nz (all normals zero)
+        // Front
+        -0.5f, -0.5f,  0.5f,   0.0f, 0.0f,  0,0,0,
+         0.5f, -0.5f,  0.5f,   1.0f, 0.0f,  0,0,0,
+         0.5f,  0.5f,  0.5f,   1.0f, 1.0f,  0,0,0,
+        -0.5f,  0.5f,  0.5f,   0.0f, 1.0f,  0,0,0,
+
+        // Back
+        -0.5f, -0.5f, -0.5f,   1.0f, 0.0f,  0,0,0,
+         0.5f, -0.5f, -0.5f,   0.0f, 0.0f,  0,0,0,
+         0.5f,  0.5f, -0.5f,   0.0f, 1.0f,  0,0,0,
+        -0.5f,  0.5f, -0.5f,   1.0f, 1.0f,  0,0,0,
+
+        // Left
+        -0.5f, -0.5f, -0.5f,   0.0f, 0.0f,  0,0,0,
+        -0.5f, -0.5f,  0.5f,   1.0f, 0.0f,  0,0,0,
+        -0.5f,  0.5f,  0.5f,   1.0f, 1.0f,  0,0,0,
+        -0.5f,  0.5f, -0.5f,   0.0f, 1.0f,  0,0,0,
+
+        // Right
+         0.5f, -0.5f, -0.5f,   1.0f, 0.0f,  0,0,0,
+         0.5f, -0.5f,  0.5f,   0.0f, 0.0f,  0,0,0,
+         0.5f,  0.5f,  0.5f,   0.0f, 1.0f,  0,0,0,
+         0.5f,  0.5f, -0.5f,   1.0f, 1.0f,  0,0,0,
+
+         // Bottom - paste image exactly once
+        -0.5f, -0.5f, -0.5f,   0.0f, 0.0f,  0,0,0,
+         0.5f, -0.5f, -0.5f,   1.0f, 0.0f,  0,0,0,
+         0.5f, -0.5f,  0.5f,   1.0f, 1.0f,  0,0,0,
+        -0.5f, -0.5f,  0.5f,   0.0f, 1.0f,  0,0,0,
+
+         // Top - paste image exactly once
+         -0.5f,  0.5f, -0.5f,   0.0f, 0.0f,  0,0,0,
+          0.5f,  0.5f, -0.5f,   1.0f, 0.0f,  0,0,0,
+          0.5f,  0.5f,  0.5f,   1.0f, 1.0f,  0,0,0,
+         -0.5f,  0.5f,  0.5f,   0.0f, 1.0f,  0,0,0
+    };
+
+    // 8 floats per vertex, 24 vertices total (192 floats)
+    unsigned int verticesCount = 192;
+    unsigned int indicesCount = 36;
+
+    // Calculate average normals in-place in vertices
+    calcAverageNormals(indices, indicesCount, vertices, verticesCount, 8, 5);
+
     Mesh* cube1 = new Mesh();
-    cube1->CreateMesh(vertices, sizeof(vertices) / sizeof(float));
+    cube1->CreateMesh(vertices, indices, verticesCount, indicesCount);
     meshList.push_back(cube1);
 
     Mesh* cube2 = new Mesh();
-    cube2->CreateMesh(vertices, sizeof(vertices) / sizeof(float));
+    cube2->CreateMesh(vertices, indices, verticesCount, indicesCount);
     meshList.push_back(cube2);
-
-    std::cout << "Objects created and added to mesh list!" << std::endl;
 }
+
 
 void CreateShader()
 {
-	Shader* shader1 = new Shader();
-	shader1->CreateFromFiles("assets/vertex_core.glsl", "assets/fragment_core1.glsl");
-	shaderList.push_back(*shader1);
+    Shader* shader1 = new Shader();
+    shader1->CreateFromFiles("assets/vertex_core.glsl", "assets/fragment_core1.glsl");
+    shaderList.push_back(*shader1);
 }
 
 int main() {
@@ -197,12 +254,17 @@ int main() {
 
     brickTexture = Texture("assets/Textures/brick.png");
     brickTexture.LoadTexture();
-    dirtTexture = Texture("assets/Textures/dirt.png");
+    dirtTexture = Texture("assets/Textures/brick.png");
     dirtTexture.LoadTexture();
 
-    mainLight = Light(1.0f, 1.0f, 1.0f, 0.2f);
-    GLuint uniformAmbientIntensity = 0;
-    GLuint uniformAmbientColour = 0;
+    mainLight = Light(1.0f, 1.0f, 1.0f, 0.2f,
+        1.0f, 0.0f, 0.0f, 0.8f);
+
+    // Use GLint for uniform locations
+    GLint uniformAmbientIntensity = 0;
+    GLint uniformAmbientColour = 0;
+    GLint uniformDiffuseIntensity = 0;
+    GLint uniformDirection = 0;
 
     x = 0.0f;
     y = 0.0f;
@@ -241,12 +303,16 @@ int main() {
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
 
-		uniformAmbientColour = shader.GetAmbientColourLocation();
-		uniformAmbientIntensity = shader.GetAmbientIntensityLocation();
+        uniformAmbientIntensity = shader.GetAmbientIntensityLocation();
+        uniformAmbientColour = shader.GetAmbientColourLocation();
+        uniformDiffuseIntensity = shader.GetDiffuseIntensityLocation();
+        uniformDirection = shader.GetDirectionLocation();
 
         mainLight.UseLight(
-            shader.GetAmbientIntensityLocation(),
-            shader.GetAmbientColourLocation()
+            uniformAmbientIntensity,
+            uniformAmbientColour,
+            uniformDiffuseIntensity,
+            uniformDirection
         );
 
         //--- First CUBE at origin
@@ -258,7 +324,7 @@ int main() {
 
         //--- Second CUBE translated+X
         glm::mat4 model2 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
-        model2 = glm::rotate(model2, static_cast<float>(glfwGetTime()), glm::vec3(1.0f, 1.0f, 0.0f));
+        model2 = glm::rotate(model2, static_cast<float>(glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
         shader.setMat4("model", model2);
         shader.setInt("theTexture", 0);
         dirtTexture.UseTexture();

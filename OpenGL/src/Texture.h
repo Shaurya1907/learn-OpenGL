@@ -22,4 +22,3 @@ private:
 
 	std::string fileLocation;
 };
-

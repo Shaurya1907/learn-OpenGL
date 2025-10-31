@@ -26,7 +26,7 @@ public:
 	}
 	GLfloat getBufferHeight() {
 		return bufferHeight;
-	}	
+	}
 
 	bool getShouldClose() {
 		return glfwWindowShouldClose(mainWindow);
@@ -36,7 +36,7 @@ public:
 		glfwSwapBuffers(mainWindow);
 	}
 
-	void pollEvents() { 
+	void pollEvents() {
 		glfwPollEvents();
 	}
 
