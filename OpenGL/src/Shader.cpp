@@ -86,6 +86,10 @@ void Shader::CompileShader(const char* vertexCode, const char* fragmentCode)
     uniformAmbientIntensity = glGetUniformLocation(shaderID, "directionalLight.ambientIntensity");
     uniformDirection = glGetUniformLocation(shaderID, "directionalLight.direction");
     uniformDiffuseIntensity = glGetUniformLocation(shaderID, "directionalLight.diffuseIntensity");
+    uniformSpecularIntensity = glGetUniformLocation(shaderID, "material.specularIntensity");
+	uniformShininess = glGetUniformLocation(shaderID, "material.shininess");
+
+	uniformEyePosition = glGetUniformLocation(shaderID, "eyePosition");
 }
 
 void Shader::UseShader()
@@ -130,13 +134,17 @@ void Shader::AddShader(GLuint theProgram, const char* shaderCode, GLenum shaderT
     glAttachShader(theProgram, theShader);
 }
 
-GLint Shader::GetProjectionLocation() { return uniformProjection; }
-GLint Shader::GetViewLocation() { return uniformView; }
-GLint Shader::GetModelLocation() { return uniformModel; }
-GLint Shader::GetAmbientColourLocation() { return uniformAmbientColour; }
-GLint Shader::GetAmbientIntensityLocation() { return uniformAmbientIntensity; }
-GLint Shader::GetDiffuseIntensityLocation() { return uniformDiffuseIntensity; }
-GLint Shader::GetDirectionLocation() { return uniformDirection; }
+GLuint Shader::GetProjectionLocation() { return uniformProjection; }
+GLuint Shader::GetViewLocation() { return uniformView; }
+GLuint Shader::GetModelLocation() { return uniformModel; }
+GLuint Shader::GetAmbientColourLocation() { return uniformAmbientColour; }
+GLuint Shader::GetAmbientIntensityLocation() { return uniformAmbientIntensity; }
+GLuint Shader::GetDiffuseIntensityLocation() { return uniformDiffuseIntensity; }
+GLuint Shader::GetDirectionLocation() { return uniformDirection; }
+GLuint Shader::GetSpecularIntensityLocation() { return uniformSpecularIntensity; }
+GLuint Shader::GetShininessLocation() { return uniformShininess; }
+
+GLuint Shader::GetEyePositionLocation() { return uniformEyePosition; }
 
 void Shader::setMat4(const std::string& name, const glm::mat4& mat)
 {

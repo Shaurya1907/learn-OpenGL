@@ -18,6 +18,7 @@
 #include "Mesh.h"
 #include "Texture.h"
 #include "Light.h"
+#include "Material.h"
 
 #include "io/keyboard.h"
 #include "io/mouse.h"
@@ -48,6 +49,10 @@ int activeCam = 0;
 // Textures
 Texture brickTexture;
 Texture dirtTexture;
+
+// Materials
+Material shinyMaterial;
+Material dullMaterial;
 
 // Light
 Light mainLight;
@@ -126,7 +131,7 @@ void calcAverageNormals(unsigned int* indices, unsigned int indiceCount, GLfloat
 
         glm::vec3 v1(vertices[in1] - vertices[in0], vertices[in1 + 1] - vertices[in0 + 1], vertices[in1 + 2] - vertices[in0 + 2]);
         glm::vec3 v2(vertices[in2] - vertices[in0], vertices[in2 + 1] - vertices[in0 + 1], vertices[in2 + 2] - vertices[in0 + 2]);
-        glm::vec3 normal = glm::cross(v1, v2);
+        glm::vec3 normal = glm::cross(v2, v1);
         normal = glm::normalize(normal);
 
         vertices[in0 + normalOffset] += normal.x;
@@ -229,7 +234,7 @@ int main() {
     int success;
     char infoLog[512];
 
-    Window mainWindow(800, 600);
+    Window mainWindow(SCR_WIDTH, SCR_HEIGHT);
     if (mainWindow.Initialise() != 0) {
         std::cerr << "Failed to initialize window" << std::endl;
         return -1;
@@ -257,14 +262,22 @@ int main() {
     dirtTexture = Texture("assets/Textures/brick.png");
     dirtTexture.LoadTexture();
 
-    mainLight = Light(1.0f, 1.0f, 1.0f, 0.2f,
-        1.0f, 0.0f, 0.0f, 0.8f);
+	shinyMaterial = Material(1.0f, 32.0f);
+	dullMaterial = Material(0.3f, 4.0f);
 
-    // Use GLint for uniform locations
-    GLint uniformAmbientIntensity = 0;
-    GLint uniformAmbientColour = 0;
-    GLint uniformDiffuseIntensity = 0;
-    GLint uniformDirection = 0;
+    mainLight = Light(1.0f, 1.0f, 1.0f, 0.2f,
+        0.0f, 1.0f, 1.0f, 0.8f);
+
+    // Use GLuint for uniform locations
+    GLuint uniformAmbientIntensity = 0;
+    GLuint uniformAmbientColour = 0;
+    GLuint uniformDiffuseIntensity = 0;
+    GLuint uniformDirection = 0;
+	GLuint uniformSpecularIntensity = 0;
+	GLuint uniformShininess = 0;
+
+	GLuint uniformEyePosition = 0;
+
 
     x = 0.0f;
     y = 0.0f;
@@ -279,6 +292,7 @@ int main() {
     }
 
     glEnable(GL_DEPTH_TEST);
+  
 
     // Render loop
     while (!mainWindow.getShouldClose()) {
@@ -291,7 +305,7 @@ int main() {
         processInput(mainWindow.getWindow(), deltaTime);
 
         // render
-        glClearColor(0.4f, 0.4f, 0.4f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         Shader& shader = shaderList[0];
@@ -299,6 +313,10 @@ int main() {
 
         glm::mat4 view = cameras[activeCam].getViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(cameras[activeCam].zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        glUniform3f(uniformEyePosition,
+            cameras[activeCam].cameraPos.x,
+            cameras[activeCam].cameraPos.y,
+			cameras[activeCam].cameraPos.z);
 
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
@@ -307,6 +325,11 @@ int main() {
         uniformAmbientColour = shader.GetAmbientColourLocation();
         uniformDiffuseIntensity = shader.GetDiffuseIntensityLocation();
         uniformDirection = shader.GetDirectionLocation();
+
+		uniformEyePosition = shader.GetEyePositionLocation();
+
+		uniformSpecularIntensity = shader.GetSpecularIntensityLocation();
+		uniformShininess = shader.GetShininessLocation();
 
         mainLight.UseLight(
             uniformAmbientIntensity,
@@ -320,14 +343,25 @@ int main() {
         shader.setMat4("model", model);
         shader.setInt("theTexture", 0);
         brickTexture.UseTexture();
+        shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
         meshList[0]->RenderMesh();
 
         //--- Second CUBE translated+X
-        glm::mat4 model2 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
+        glm::mat4 model2 = glm::translate(glm::mat4(1.0f), glm::vec3(5.0f, 0.0f, 0.0f));
         model2 = glm::rotate(model2, static_cast<float>(glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
         shader.setMat4("model", model2);
         shader.setInt("theTexture", 0);
         dirtTexture.UseTexture();
+        shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+        meshList[1]->RenderMesh();
+
+		//--- Third CUBE translated -X
+        glm::mat4 model3 = glm::translate(glm::mat4(1.0f), glm::vec3(-5.0f, 0.0f, 0.0f));
+        model3 = glm::rotate(model3, static_cast<float>(glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
+        shader.setMat4("model", model3);
+        shader.setInt("theTexture", 0);
+        dirtTexture.UseTexture();
+        shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
         meshList[1]->RenderMesh();
 
         glBindVertexArray(0);

@@ -22,22 +22,29 @@ public:
     std::string ReadFile(const char* fileLocation);
 
     // Get uniform locations for direct OpenGL use
-    GLint GetProjectionLocation();
-    GLint GetViewLocation();
-    GLint GetModelLocation();
+    GLuint GetProjectionLocation();
+    GLuint GetViewLocation();
+    GLuint GetModelLocation();
 
-    GLint GetAmbientIntensityLocation();
-    GLint GetAmbientColourLocation();
-    GLint GetDiffuseIntensityLocation();
-    GLint GetDirectionLocation();
+	GLuint GetEyePositionLocation();
+
+    GLuint GetAmbientIntensityLocation();
+    GLuint GetAmbientColourLocation();
+    GLuint GetDiffuseIntensityLocation();
+    GLuint GetDirectionLocation();
+	GLuint GetSpecularIntensityLocation();
+	GLuint GetShininessLocation();
 
 private:
     GLuint shaderID;
-    GLint uniformProjection;
-    GLint uniformView;
-    GLint uniformModel;
+    GLuint uniformProjection;
+    GLuint uniformView;
+    GLuint uniformModel;
 
-    GLint uniformAmbientIntensity, uniformAmbientColour, uniformDiffuseIntensity, uniformDirection;
+    GLuint uniformEyePosition;
+
+    GLuint uniformAmbientIntensity, uniformAmbientColour, uniformDiffuseIntensity, uniformDirection,
+        uniformSpecularIntensity, uniformShininess;
 
     void CompileShader(const char* vertexCode, const char* fragmentCode);
     void AddShader(GLuint theProgram, const char* shaderCode, GLenum shaderType);
