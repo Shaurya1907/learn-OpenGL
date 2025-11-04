@@ -17,8 +17,10 @@
 #include "Shader.h"
 #include "Mesh.h"
 #include "Texture.h"
-#include "Light.h"
+#include "DirectionalLight.h"
 #include "Material.h"
+#include "PointLight.h"
+#include "CommonValues.h"
 
 #include "io/keyboard.h"
 #include "io/mouse.h"
@@ -49,13 +51,15 @@ int activeCam = 0;
 // Textures
 Texture brickTexture;
 Texture dirtTexture;
+Texture plainTexture;
 
 // Materials
 Material shinyMaterial;
 Material dullMaterial;
 
 // Light
-Light mainLight;
+DirectionalLight mainLight;
+PointLight pointLights[MAX_POINT_LIGHTS];
 
 glm::mat4 transform = glm::mat4(1.0f);
 Joystick mainJ(0);
@@ -63,7 +67,7 @@ Joystick mainJ(0);
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-unsigned int SCR_WIDTH = 800, SCR_HEIGHT = 600;
+unsigned int SCR_WIDTH = 1124, SCR_HEIGHT = 768;
 float x, y, z;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -206,6 +210,18 @@ void CreateObject() {
          -0.5f,  0.5f,  0.5f,   0.0f, 1.0f,  0,0,0
     };
 
+    unsigned int floorIndices[] = {
+        0, 2, 1, 
+        1, 2, 3
+	};
+
+    GLfloat floorVertices[] = {
+       -10.0f, 0.0f, -10.0f,	0.0f, 0.0f,	    0.0f, 1.0f, 0.0f,
+        10.0f, 0.0f, -10.0f,	10.0f, 0.0f,	0.0f, 1.0f, 0.0f,
+        -10.0f, 0.0f, 10.0f,	0.0f, 10.0f,	0.0f, 1.0f, 0.0f,
+        10.0f, 0.0f, 10.0f,		10.0f, 10.0f,	0.0f, 1.0f, 0.0f
+    };
+
     // 8 floats per vertex, 24 vertices total (192 floats)
     unsigned int verticesCount = 192;
     unsigned int indicesCount = 36;
@@ -213,13 +229,17 @@ void CreateObject() {
     // Calculate average normals in-place in vertices
     calcAverageNormals(indices, indicesCount, vertices, verticesCount, 8, 5);
 
-    Mesh* cube1 = new Mesh();
-    cube1->CreateMesh(vertices, indices, verticesCount, indicesCount);
-    meshList.push_back(cube1);
+    Mesh* obj1 = new Mesh();
+    obj1->CreateMesh(vertices, indices, verticesCount, indicesCount);
+    meshList.push_back(obj1);
 
-    Mesh* cube2 = new Mesh();
-    cube2->CreateMesh(vertices, indices, verticesCount, indicesCount);
-    meshList.push_back(cube2);
+    Mesh* obj2 = new Mesh();
+    obj2->CreateMesh(vertices, indices, verticesCount, indicesCount);
+    meshList.push_back(obj2);
+
+	Mesh* obj3 = new Mesh();
+	obj3->CreateMesh(floorVertices, floorIndices, 32, 6);
+	meshList.push_back(obj3);
 }
 
 
@@ -259,20 +279,40 @@ int main() {
 
     brickTexture = Texture("assets/Textures/brick.png");
     brickTexture.LoadTexture();
-    dirtTexture = Texture("assets/Textures/brick.png");
+    dirtTexture = Texture("assets/Textures/dirt.png");
     dirtTexture.LoadTexture();
+	plainTexture = Texture("assets/Textures/plain.png");
+	plainTexture.LoadTexture();
 
-	shinyMaterial = Material(1.0f, 32.0f);
+	shinyMaterial = Material(1.0f, 256.0f);
 	dullMaterial = Material(0.3f, 4.0f);
 
-    mainLight = Light(1.0f, 1.0f, 1.0f, 0.2f,
-        0.0f, 1.0f, 1.0f, 0.8f);
+    // Directional light: white, some ambient + diffuse, pointing -Z
+    mainLight = DirectionalLight(
+        1.0f, 1.0f, 1.0f,   // color
+        0.15f, 0.7f,        // ambient, diffuse
+        0.0f, 0.0f, -1.0f   // direction
+    );
+
+    unsigned int pointLightCount = 0;
+    // Point light 0: blue-ish with small ambient, use friendlier attenuation
+    pointLights[0] = PointLight(
+        0.0f, 0.0f, 1.0f,   // color
+        0.05f, 1.0f,        // ambient, diffuse
+        4.0f, 2.0f, 0.0f,   // position
+        1.0f, 0.09f, 0.032f // attenuation (constant, linear, quadratic)
+    );
+    pointLightCount++;
+    // Point light 1: green-ish
+    pointLights[1] = PointLight(
+        0.0f, 1.0f, 0.0f,   // color
+        0.05f, 1.0f,        // ambient, diffuse
+        -4.0f, 2.0f, 0.0f,   // position
+        1.0f, 0.09f, 0.032f   // attenuation (constant, linear, quadratic)2f
+    );
+    pointLightCount++;
 
     // Use GLuint for uniform locations
-    GLuint uniformAmbientIntensity = 0;
-    GLuint uniformAmbientColour = 0;
-    GLuint uniformDiffuseIntensity = 0;
-    GLuint uniformDirection = 0;
 	GLuint uniformSpecularIntensity = 0;
 	GLuint uniformShininess = 0;
 
@@ -311,58 +351,50 @@ int main() {
         Shader& shader = shaderList[0];
         shader.UseShader();
 
+        // get locations first
+        uniformEyePosition = shader.GetEyePositionLocation();
+        uniformSpecularIntensity = shader.GetSpecularIntensityLocation();
+        uniformShininess = shader.GetShininessLocation();
+
         glm::mat4 view = cameras[activeCam].getViewMatrix();
-        glm::mat4 projection = glm::perspective(glm::radians(cameras[activeCam].zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-        glUniform3f(uniformEyePosition,
-            cameras[activeCam].cameraPos.x,
-            cameras[activeCam].cameraPos.y,
-			cameras[activeCam].cameraPos.z);
+        glm::mat4 projection = glm::perspective(glm::radians(cameras[activeCam].zoom),
+            (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
 
-        uniformAmbientIntensity = shader.GetAmbientIntensityLocation();
-        uniformAmbientColour = shader.GetAmbientColourLocation();
-        uniformDiffuseIntensity = shader.GetDiffuseIntensityLocation();
-        uniformDirection = shader.GetDirectionLocation();
+        // now set eye position
+        glUniform3f(uniformEyePosition,
+            cameras[activeCam].cameraPos.x,
+            cameras[activeCam].cameraPos.y,
+            cameras[activeCam].cameraPos.z);
 
-		uniformEyePosition = shader.GetEyePositionLocation();
-
-		uniformSpecularIntensity = shader.GetSpecularIntensityLocation();
-		uniformShininess = shader.GetShininessLocation();
-
-        mainLight.UseLight(
-            uniformAmbientIntensity,
-            uniformAmbientColour,
-            uniformDiffuseIntensity,
-            uniformDirection
-        );
+        shader.SetDirectionalLight(&mainLight);
+		shader.SetPointLights(pointLights, pointLightCount);
 
         //--- First CUBE at origin
-        glm::mat4 model = glm::mat4(1.0f);
-        shader.setMat4("model", model);
+        glm::mat4 model1 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        shader.setMat4("model", model1);
         shader.setInt("theTexture", 0);
         brickTexture.UseTexture();
         shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
         meshList[0]->RenderMesh();
 
-        //--- Second CUBE translated+X
-        glm::mat4 model2 = glm::translate(glm::mat4(1.0f), glm::vec3(5.0f, 0.0f, 0.0f));
+        //--- Second CUBE translated+Y
+        glm::mat4 model2 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 5.0f, 0.0f));
         model2 = glm::rotate(model2, static_cast<float>(glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
         shader.setMat4("model", model2);
         shader.setInt("theTexture", 0);
-        dirtTexture.UseTexture();
+        brickTexture.UseTexture();
         shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
         meshList[1]->RenderMesh();
 
-		//--- Third CUBE translated -X
-        glm::mat4 model3 = glm::translate(glm::mat4(1.0f), glm::vec3(-5.0f, 0.0f, 0.0f));
-        model3 = glm::rotate(model3, static_cast<float>(glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 model3 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 0.0f));
         shader.setMat4("model", model3);
-        shader.setInt("theTexture", 0);
-        dirtTexture.UseTexture();
+		shader.setInt("theTexture", 0);
+        plainTexture.UseTexture();
         shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-        meshList[1]->RenderMesh();
+        meshList[2]->RenderMesh();
 
         glBindVertexArray(0);
 

@@ -129,6 +129,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="SpotLight.cpp" />
+    <ClCompile Include="src\PointLight.cpp" />
+    <ClCompile Include="src\DirectionalLight.cpp" />
     <ClCompile Include="src\Material.cpp" />
     <ClCompile Include="src\Light.cpp" />
     <ClCompile Include="src\Mesh.cpp" />
@@ -145,10 +148,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="assets\fragment_core1.glsl" />
-    <None Include="assets\fragment_core2.glsl" />
     <None Include="assets\vertex_core.glsl" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="SpotLight.h" />
+    <ClInclude Include="src\CommonValues.h" />
+    <ClInclude Include="src\PointLight.h" />
+    <ClInclude Include="src\DirectionalLight.h" />
     <ClInclude Include="src\Material.h" />
     <ClInclude Include="src\Light.h" />
     <ClInclude Include="src\Mesh.h" />
@@ -165,6 +171,7 @@
     <Image Include="assets\image1.png" />
     <Image Include="assets\Textures\brick.png" />
     <Image Include="assets\Textures\dirt.png" />
+    <Image Include="assets\Textures\plain.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
