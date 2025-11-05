@@ -4,21 +4,21 @@
 class PointLight : public Light
 {
 public:
-	PointLight();
-	PointLight(GLuint red, GLuint green, GLuint blue,
-		GLuint aIntensity, GLuint dIntensity,
-		GLuint xPos, GLuint yPos, GLuint zPos,
-		GLuint con, GLuint lin, GLuint exp);
+    PointLight();
+    PointLight(GLfloat red, GLfloat green, GLfloat blue,
+               GLfloat aIntensity, GLfloat dIntensity,
+               GLfloat xPos, GLfloat yPos, GLfloat zPos,
+               GLfloat con, GLfloat lin, GLfloat exp);
 
-	void UseLight(GLuint ambientIntensityLocation, GLuint ambientColourLocation,
-		GLuint diffuseIntensityLocation, GLuint positionLocation,
-		GLuint constantLocation, GLuint linearLocation,
-		GLuint exponentLocation);
+    void UseLight(GLuint ambientIntensityLocation, GLuint ambientColourLocation,
+                  GLuint diffuseIntensityLocation, GLuint positionLocation,
+                  GLuint constantLocation, GLuint linearLocation,
+                  GLuint exponentLocation);
 
-	~PointLight();
+    ~PointLight();
 
 protected:
-	glm::vec3 position;
+    glm::vec3 position;
 
-	GLfloat constant, linear, exponent;
+    GLfloat constant, linear, exponent;
 };

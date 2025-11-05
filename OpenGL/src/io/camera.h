@@ -34,6 +34,7 @@ public:
     void updateCameraZoom(double dy);
 
     glm::vec3 getCameraPosition();
+    glm::vec3 getCameraDirection();
 
     glm::mat4 getViewMatrix();
 

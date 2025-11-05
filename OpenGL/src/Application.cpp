@@ -20,6 +20,7 @@
 #include "DirectionalLight.h"
 #include "Material.h"
 #include "PointLight.h"
+#include "SpotLight.h"
 #include "CommonValues.h"
 
 #include "io/keyboard.h"
@@ -60,6 +61,7 @@ Material dullMaterial;
 // Light
 DirectionalLight mainLight;
 PointLight pointLights[MAX_POINT_LIGHTS];
+SpotLight spotLights[MAX_SPOT_LIGHTS];
 
 glm::mat4 transform = glm::mat4(1.0f);
 Joystick mainJ(0);
@@ -287,11 +289,11 @@ int main() {
 	shinyMaterial = Material(1.0f, 256.0f);
 	dullMaterial = Material(0.3f, 4.0f);
 
-    // Directional light: white, some ambient + diffuse, pointing -Z
+    // Directional light: white, some ambient + diffuse
     mainLight = DirectionalLight(
         1.0f, 1.0f, 1.0f,   // color
-        0.15f, 0.7f,        // ambient, diffuse
-        0.0f, 0.0f, -1.0f   // direction
+        0.1f, 0.1f,         // ambient, diffuse
+        0.0f, -1.0f, 0.0f   // direction
     );
 
     unsigned int pointLightCount = 0;
@@ -302,15 +304,36 @@ int main() {
         4.0f, 2.0f, 0.0f,   // position
         1.0f, 0.09f, 0.032f // attenuation (constant, linear, quadratic)
     );
-    pointLightCount++;
+    //pointLightCount++;
     // Point light 1: green-ish
     pointLights[1] = PointLight(
-        0.0f, 1.0f, 0.0f,   // color
-        0.05f, 1.0f,        // ambient, diffuse
+        0.0f, 1.0f, 0.0f,    // color
+        0.05f, 1.0f,         // ambient, diffuse
         -4.0f, 2.0f, 0.0f,   // position
-        1.0f, 0.09f, 0.032f   // attenuation (constant, linear, quadratic)2f
+        1.0f, 0.09f, 0.032f  // attenuation (constant, linear, quadratic)2f
     );
-    pointLightCount++;
+    //pointLightCount++;
+
+    unsigned int spotLightCount = 0;
+    spotLights[0] = SpotLight(
+        1.0f, 1.0f, 1.0f,    // color (white)
+        0.0f, 2.0f,          // ambient, diffuse
+        0.0f, 0.0f, 0.0f,    // position
+        0.0f, -1.0f, 0.0f,   // direction
+        1.0f, 0.0f, 0.0f,   // attenuation (constant, linear, quadratic)
+        20.0f                // edge angle in degrees
+    );
+	spotLightCount++;
+        
+    spotLights[1] = SpotLight(
+        1.0f, 1.0f, 1.0f,        // color (white)
+        0.0f, 1.0f,             // ambient, diffuse
+        0.0f, 1.5f, 0.0f,        // position
+        -1.0f, -1.0f, 0.0f,    // direction
+        1.0f, 0.0f, 0.0f,     // attenuation (constant, linear, quadratic)
+        20.0f                    // edge angle in degrees
+    );
+    spotLightCount++;
 
     // Use GLuint for uniform locations
 	GLuint uniformSpecularIntensity = 0;
@@ -351,6 +374,10 @@ int main() {
         Shader& shader = shaderList[0];
         shader.UseShader();
 
+        glm::vec3 lowerLight = cameras[activeCam].getCameraPosition();
+        lowerLight.y -= 0.3f;
+        spotLights[0].SetFlash(lowerLight, cameras[activeCam].getCameraDirection());
+
         // get locations first
         uniformEyePosition = shader.GetEyePositionLocation();
         uniformSpecularIntensity = shader.GetSpecularIntensityLocation();
@@ -371,6 +398,7 @@ int main() {
 
         shader.SetDirectionalLight(&mainLight);
 		shader.SetPointLights(pointLights, pointLightCount);
+		shader.SetSpotLights(spotLights, spotLightCount);
 
         //--- First CUBE at origin
         glm::mat4 model1 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -392,7 +420,7 @@ int main() {
         glm::mat4 model3 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 0.0f));
         shader.setMat4("model", model3);
 		shader.setInt("theTexture", 0);
-        plainTexture.UseTexture();
+        dirtTexture.UseTexture();
         shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
         meshList[2]->RenderMesh();
 
