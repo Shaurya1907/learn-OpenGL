@@ -63,10 +63,9 @@
     <ClCompile Include="src\SpotLight.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="assets\fragment_core1.glsl" />
-    <None Include="assets\vertex_core.glsl" />
+    <ClCompile Include="src\Model.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Shader.h">
@@ -111,6 +110,9 @@
     <ClInclude Include="src\SpotLight.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\Model.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\image.png">
@@ -128,5 +130,10 @@
     <Image Include="assets\Textures\plain.png">
       <Filter>Resource Files</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="assimp-vc143-mtd.dll" />
+    <None Include="Shaders\fragment_core1.glsl" />
+    <None Include="Shaders\vertex_core.glsl" />
   </ItemGroup>
 </Project>

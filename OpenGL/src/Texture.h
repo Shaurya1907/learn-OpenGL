@@ -10,7 +10,9 @@ public:
 	Texture();
 	Texture(const std::string& fileLoc);
 
-	void LoadTexture();
+	bool LoadTexture();
+	bool LoadTextureA();
+
 	void UseTexture(GLenum texUnit = GL_TEXTURE0);
 	void ClearTexture();
 

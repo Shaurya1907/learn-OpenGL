@@ -23,6 +23,8 @@
 #include "SpotLight.h"
 #include "CommonValues.h"
 
+#include "Model.h"
+
 #include "io/keyboard.h"
 #include "io/mouse.h"
 #include "io/Joystick.h"
@@ -57,6 +59,9 @@ Texture plainTexture;
 // Materials
 Material shinyMaterial;
 Material dullMaterial;
+
+// Models
+Model seahawk;
 
 // Light
 DirectionalLight mainLight;
@@ -248,7 +253,7 @@ void CreateObject() {
 void CreateShader()
 {
     Shader* shader1 = new Shader();
-    shader1->CreateFromFiles("assets/vertex_core.glsl", "assets/fragment_core1.glsl");
+    shader1->CreateFromFiles("Shaders/vertex_core.glsl", "Shaders/fragment_core1.glsl");
     shaderList.push_back(*shader1);
 }
 
@@ -279,32 +284,35 @@ int main() {
 
     GLuint uniformProjection = 0, uniformView = 0, uniformModel = 0;
 
-    brickTexture = Texture("assets/Textures/brick.png");
-    brickTexture.LoadTexture();
-    dirtTexture = Texture("assets/Textures/dirt.png");
-    dirtTexture.LoadTexture();
-	plainTexture = Texture("assets/Textures/plain.png");
-	plainTexture.LoadTexture();
+    brickTexture = Texture("Textures/brick.png");
+    brickTexture.LoadTextureA();
+    dirtTexture = Texture("Textures/dirt.png");
+    dirtTexture.LoadTextureA();
+	plainTexture = Texture("Textures/plain.png");
+	plainTexture.LoadTextureA();
 
 	shinyMaterial = Material(1.0f, 256.0f);
 	dullMaterial = Material(0.3f, 4.0f);
 
+	seahawk = Model();
+	seahawk.LoadModel("Models/Seahawk.obj");
+
     // Directional light: white, some ambient + diffuse
     mainLight = DirectionalLight(
-        1.0f, 1.0f, 1.0f,   // color
-        0.1f, 0.1f,         // ambient, diffuse
-        0.0f, -1.0f, 0.0f   // direction
+        1.0f, 1.0f, 1.0f,      // color
+        0.3f, 0.6f,            // ambient, diffuse
+        0.0f, -1.0f, 0.0f      // direction
     );
 
     unsigned int pointLightCount = 0;
     // Point light 0: blue-ish with small ambient, use friendlier attenuation
     pointLights[0] = PointLight(
-        0.0f, 0.0f, 1.0f,   // color
-        0.05f, 1.0f,        // ambient, diffuse
-        4.0f, 2.0f, 0.0f,   // position
-        1.0f, 0.09f, 0.032f // attenuation (constant, linear, quadratic)
+        0.0f, 0.0f, 1.0f,       // color
+        0.05f, 1.0f,            // ambient, diffuse
+        4.0f, 2.0f, 0.0f,       // position
+        1.0f, 0.09f, 0.032f     // attenuation (constant, linear, quadratic)
     );
-    //pointLightCount++;
+    pointLightCount++;
     // Point light 1: green-ish
     pointLights[1] = PointLight(
         0.0f, 1.0f, 0.0f,    // color
@@ -312,25 +320,25 @@ int main() {
         -4.0f, 2.0f, 0.0f,   // position
         1.0f, 0.09f, 0.032f  // attenuation (constant, linear, quadratic)2f
     );
-    //pointLightCount++;
+    pointLightCount++;
 
     unsigned int spotLightCount = 0;
     spotLights[0] = SpotLight(
-        1.0f, 1.0f, 1.0f,    // color (white)
-        0.0f, 2.0f,          // ambient, diffuse
-        0.0f, 0.0f, 0.0f,    // position
-        0.0f, -1.0f, 0.0f,   // direction
-        1.0f, 0.0f, 0.0f,   // attenuation (constant, linear, quadratic)
-        20.0f                // edge angle in degrees
+        1.0f, 1.0f, 1.0f,        // color (white)
+        0.0f, 2.0f,              // ambient, diffuse
+        0.0f, 0.0f, 0.0f,        // position
+        0.0f, -1.0f, 0.0f,       // direction
+        1.0f, 0.0f, 0.0f,        // attenuation (constant, linear, quadratic)
+        20.0f                    // edge angle in degrees
     );
 	spotLightCount++;
         
     spotLights[1] = SpotLight(
         1.0f, 1.0f, 1.0f,        // color (white)
-        0.0f, 1.0f,             // ambient, diffuse
+        0.0f, 1.0f,              // ambient, diffuse
         0.0f, 1.5f, 0.0f,        // position
-        -1.0f, -1.0f, 0.0f,    // direction
-        1.0f, 0.0f, 0.0f,     // attenuation (constant, linear, quadratic)
+        -1.0f, -1.0f, 0.0f,      // direction
+        1.0f, 0.0f, 0.0f,        // attenuation (constant, linear, quadratic)
         20.0f                    // edge angle in degrees
     );
     spotLightCount++;
@@ -356,7 +364,6 @@ int main() {
 
     glEnable(GL_DEPTH_TEST);
   
-
     // Render loop
     while (!mainWindow.getShouldClose()) {
 
@@ -376,7 +383,7 @@ int main() {
 
         glm::vec3 lowerLight = cameras[activeCam].getCameraPosition();
         lowerLight.y -= 0.3f;
-        spotLights[0].SetFlash(lowerLight, cameras[activeCam].getCameraDirection());
+        //spotLights[0].SetFlash(lowerLight, cameras[activeCam].getCameraDirection());
 
         // get locations first
         uniformEyePosition = shader.GetEyePositionLocation();
@@ -423,6 +430,12 @@ int main() {
         dirtTexture.UseTexture();
         shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
         meshList[2]->RenderMesh();
+
+        glm::mat4 model4 = glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 0.0f, 0.0f));
+        model4 = glm::scale(model4, glm::vec3(0.05f, 0.05f, 0.05f));
+        shader.setMat4("model", model4);
+        shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		seahawk.RenderModel();
 
         glBindVertexArray(0);
 

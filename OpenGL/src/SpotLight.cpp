@@ -1,7 +1,5 @@
 #include "SpotLight.h"
 
-
-
 SpotLight::SpotLight() : PointLight()
 {
 	direction = glm::vec3(0.0f, -1.0f, 0.0f);
@@ -30,7 +28,7 @@ void SpotLight::UseLight(GLuint ambientIntensityLocation, GLuint ambientColourLo
 	glUniform3f(ambientColourLocation, colour.x, colour.y, colour.z);
 	glUniform1f(ambientIntensityLocation, ambientIntensity);
 	glUniform1f(diffuseIntensityLocation, diffuseIntensity);
-
+	
 	glUniform3f(positionLocation, position.x, position.y, position.z);
 	glUniform1f(constantLocation, constant);
 	glUniform1f(linearLocation, linear);

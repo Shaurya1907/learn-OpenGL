@@ -19,12 +19,12 @@ Texture::Texture(const std::string& fileLoc)
     fileLocation = fileLoc;
 }
 
-void Texture::LoadTexture()
+bool Texture::LoadTexture()
 {
     unsigned char* texData = stbi_load(fileLocation.c_str(), &width, &height, &bitDepth, 0);
     if (!texData) {
         std::cout << "Failed to find: " << fileLocation << std::endl;
-        return;
+        return false;
     }
 
     glGenTextures(1, &textureID);
@@ -37,13 +37,37 @@ void Texture::LoadTexture()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    GLenum format = (bitDepth == 4) ? GL_RGBA : GL_RGB;
-    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, texData);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, texData);
     glGenerateMipmap(GL_TEXTURE_2D);
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
     stbi_image_free(texData);
+    return true;
+}
+
+bool Texture::LoadTextureA()
+{
+    unsigned char* texData = stbi_load(fileLocation.c_str(), &width, &height, &bitDepth, 4); // force RGBA
+    if (!texData) { std::cout << "Failed to find: " << fileLocation << std::endl; return false; }
+
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // safe for all channel counts
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texData);
+
+    if (glGetError() == GL_NO_ERROR)
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    stbi_image_free(texData);
+    return true;
 }
 
 void Texture::UseTexture(GLenum texUnit)
