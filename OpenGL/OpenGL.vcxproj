@@ -129,6 +129,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\ShadowMap.cpp" />
     <ClCompile Include="src\Model.cpp" />
     <ClCompile Include="src\SpotLight.cpp" />
     <ClCompile Include="src\PointLight.cpp" />
@@ -148,6 +149,7 @@
     <ClCompile Include="src\Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\ShadowMap.h" />
     <ClInclude Include="src\Model.h" />
     <ClInclude Include="src\SpotLight.h" />
     <ClInclude Include="src\CommonValues.h" />
@@ -173,6 +175,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="assimp-vc143-mtd.dll" />
+    <None Include="Shaders\directional_shadow_map.frag" />
+    <None Include="Shaders\directional_shadow_map.vert" />
     <None Include="Shaders\fragment_core1.glsl" />
     <None Include="Shaders\vertex_core.glsl" />
   </ItemGroup>

@@ -13,6 +13,8 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "CommonValues.h"
+
 #include "Window.h"
 #include "Shader.h"
 #include "Mesh.h"
@@ -21,20 +23,23 @@
 #include "Material.h"
 #include "PointLight.h"
 #include "SpotLight.h"
-#include "CommonValues.h"
 
 #include "Model.h"
 
 #include "io/keyboard.h"
 #include "io/mouse.h"
-#include "io/Joystick.h"
 #include "io/camera.h"
+
+// Use GLuint for uniform locations
+GLuint uniformSpecularIntensity = 0;
+GLuint uniformShininess = 0;
+GLuint uniformEyePosition = 0;
+GLuint uniformProjection = 0, uniformView = 0, uniformModel = 0;
 
 std::vector<Mesh*> meshList;
 std::vector<Shader> shaderList;
 std::vector<Window> windowList;
-
-glm::mat4 mouseTransform = glm::mat4(1.0f);
+Shader directionalShadowShader;
 
 // Cameras
 Camera cameras[2] = {
@@ -68,8 +73,8 @@ DirectionalLight mainLight;
 PointLight pointLights[MAX_POINT_LIGHTS];
 SpotLight spotLights[MAX_SPOT_LIGHTS];
 
-glm::mat4 transform = glm::mat4(1.0f);
-Joystick mainJ(0);
+unsigned int spotLightCount = 0;
+unsigned int pointLightCount = 0;
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
@@ -111,7 +116,6 @@ void processInput(GLFWwindow* mainWindow, double dt)
     if (Keyboard::key(GLFW_KEY_LEFT_SHIFT)) {
         cameras[activeCam].updateCameraPos(CameraDirection::DOWN, dt);
     }
-    mainJ.update();
 
     double dx = Mouse::getDX(), dy = Mouse::getDY();
     if (dx != 0 || dy != 0) {
@@ -255,6 +259,94 @@ void CreateShader()
     Shader* shader1 = new Shader();
     shader1->CreateFromFiles("Shaders/vertex_core.glsl", "Shaders/fragment_core1.glsl");
     shaderList.push_back(*shader1);
+
+	directionalShadowShader = Shader();
+    directionalShadowShader.CreateFromFiles("Shaders/directional_shadow_map.vert", "Shaders/directional_shadow_map.frag");
+}
+
+void RenderScene(bool forShadow = false)
+{
+    //--- First CUBE at origin
+    glm::mat4 model1 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    shaderList[0].setMat4("model", model1);
+    shaderList[0].setInt("theTexture", 0);
+    brickTexture.UseTexture();
+    shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+    meshList[0]->RenderMesh();
+
+    //--- Second CUBE translated+Y
+    glm::mat4 model2 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 5.0f, 0.0f));
+    model2 = glm::rotate(model2, static_cast<float>(glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
+    shaderList[0].setMat4("model", model2);
+    shaderList[0].setInt("theTexture", 0);
+    brickTexture.UseTexture();
+    shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+    meshList[1]->RenderMesh();
+
+    glm::mat4 model3 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 0.0f));
+    shaderList[0].setMat4("model", model3);
+    shaderList[0].setInt("theTexture", 0);
+    plainTexture.UseTexture();
+    shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+    meshList[2]->RenderMesh();
+
+    glm::mat4 model4 = glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 0.0f, 0.0f));
+    model4 = glm::scale(model4, glm::vec3(0.05f, 0.05f, 0.05f));
+    shaderList[0].setMat4("model", model4);
+    shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+    seahawk.RenderModel();
+}
+
+void DirectionalShadowMapPass(DirectionalLight *light)
+{
+    directionalShadowShader.UseShader();
+
+    glViewport(0, 0, light->GetShadowMap()->GetShadowWidth(), light->GetShadowMap()->GetShadowHeight());
+
+	light->GetShadowMap()->Write();
+    glClear(GL_DEPTH_BUFFER_BIT);
+
+	uniformModel = directionalShadowShader.GetModelLocation();
+    directionalShadowShader.SetDirectionalLightTransform(light->CalculateLightTransform());
+
+    RenderScene(true);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
+{
+    shaderList[0].UseShader();
+
+    uniformModel = shaderList[0].GetModelLocation();
+    uniformProjection = shaderList[0].GetProjectionLocation();
+    uniformView = shaderList[0].GetViewLocation();
+    uniformEyePosition = shaderList[0].GetEyePositionLocation();
+    uniformSpecularIntensity = shaderList[0].GetSpecularIntensityLocation();
+    uniformShininess = shaderList[0].GetShininessLocation();
+
+    glViewport(0, 0, 1366, 768);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+    glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(viewMatrix));
+    glUniform3f(uniformEyePosition, cameras[activeCam].getCameraPosition().x, cameras[activeCam].getCameraPosition().y, cameras[activeCam].getCameraPosition().z);
+
+    shaderList[0].SetDirectionalLight(&mainLight);
+    shaderList[0].SetPointLights(pointLights, pointLightCount);
+    shaderList[0].SetSpotLights(spotLights, spotLightCount);
+    shaderList[0].SetDirectionalLightTransform(mainLight.CalculateLightTransform());
+    mainLight.GetShadowMap()->Read(GL_TEXTURE1);
+    shaderList[0].SetTexture(0);
+    shaderList[0].SetDirectionalShadowMap(1);
+
+    glm::vec3 lowerLight = cameras[activeCam].getCameraPosition();
+    lowerLight.y -= 0.3f;
+    //spotLights[0].SetFlash(lowerLight, cameras[activeCam].getCameraDirection());
+
+	RenderScene(false);
 }
 
 int main() {
@@ -282,8 +374,6 @@ int main() {
     CreateShader();
     CreateObject();
 
-    GLuint uniformProjection = 0, uniformView = 0, uniformModel = 0;
-
     brickTexture = Texture("Textures/brick.png");
     brickTexture.LoadTextureA();
     dirtTexture = Texture("Textures/dirt.png");
@@ -299,12 +389,12 @@ int main() {
 
     // Directional light: white, some ambient + diffuse
     mainLight = DirectionalLight(
+		1024, 1024,           // shadow map dimensions
         1.0f, 1.0f, 1.0f,      // color
         0.3f, 0.6f,            // ambient, diffuse
-        0.0f, -1.0f, 0.0f      // direction
+        0.0f, -7.0f, 0.0f      // direction
     );
 
-    unsigned int pointLightCount = 0;
     // Point light 0: blue-ish with small ambient, use friendlier attenuation
     pointLights[0] = PointLight(
         0.0f, 0.0f, 1.0f,       // color
@@ -322,7 +412,6 @@ int main() {
     );
     pointLightCount++;
 
-    unsigned int spotLightCount = 0;
     spotLights[0] = SpotLight(
         1.0f, 1.0f, 1.0f,        // color (white)
         0.0f, 2.0f,              // ambient, diffuse
@@ -343,27 +432,12 @@ int main() {
     );
     spotLightCount++;
 
-    // Use GLuint for uniform locations
-	GLuint uniformSpecularIntensity = 0;
-	GLuint uniformShininess = 0;
-
-	GLuint uniformEyePosition = 0;
-
-
     x = 0.0f;
     y = 0.0f;
     z = 3.0f;
 
-    mainJ.update();
-    if (mainJ.isPresent()) {
-        std::cout << mainJ.getName() << " is present." << std::endl;
-    }
-    else {
-        std::cout << "Not present." << std::endl;
-    }
-
     glEnable(GL_DEPTH_TEST);
-  
+
     // Render loop
     while (!mainWindow.getShouldClose()) {
 
@@ -373,71 +447,17 @@ int main() {
 
         // process input
         processInput(mainWindow.getWindow(), deltaTime);
-
-        // render
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        Shader& shader = shaderList[0];
-        shader.UseShader();
-
-        glm::vec3 lowerLight = cameras[activeCam].getCameraPosition();
-        lowerLight.y -= 0.3f;
-        //spotLights[0].SetFlash(lowerLight, cameras[activeCam].getCameraDirection());
-
-        // get locations first
-        uniformEyePosition = shader.GetEyePositionLocation();
-        uniformSpecularIntensity = shader.GetSpecularIntensityLocation();
-        uniformShininess = shader.GetShininessLocation();
+		DirectionalShadowMapPass(&mainLight);
 
         glm::mat4 view = cameras[activeCam].getViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(cameras[activeCam].zoom),
-            (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+            static_cast<float>(SCR_WIDTH) / static_cast<float>(SCR_HEIGHT),
+            0.1f, 100.0f);
 
-        shader.setMat4("view", view);
-        shader.setMat4("projection", projection);
+        // Render pass
+        RenderPass(projection, view);
 
-        // now set eye position
-        glUniform3f(uniformEyePosition,
-            cameras[activeCam].cameraPos.x,
-            cameras[activeCam].cameraPos.y,
-            cameras[activeCam].cameraPos.z);
-
-        shader.SetDirectionalLight(&mainLight);
-		shader.SetPointLights(pointLights, pointLightCount);
-		shader.SetSpotLights(spotLights, spotLightCount);
-
-        //--- First CUBE at origin
-        glm::mat4 model1 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        shader.setMat4("model", model1);
-        shader.setInt("theTexture", 0);
-        brickTexture.UseTexture();
-        shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-        meshList[0]->RenderMesh();
-
-        //--- Second CUBE translated+Y
-        glm::mat4 model2 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 5.0f, 0.0f));
-        model2 = glm::rotate(model2, static_cast<float>(glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
-        shader.setMat4("model", model2);
-        shader.setInt("theTexture", 0);
-        brickTexture.UseTexture();
-        shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-        meshList[1]->RenderMesh();
-
-        glm::mat4 model3 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 0.0f));
-        shader.setMat4("model", model3);
-		shader.setInt("theTexture", 0);
-        dirtTexture.UseTexture();
-        shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-        meshList[2]->RenderMesh();
-
-        glm::mat4 model4 = glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 0.0f, 0.0f));
-        model4 = glm::scale(model4, glm::vec3(0.05f, 0.05f, 0.05f));
-        shader.setMat4("model", model4);
-        shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-		seahawk.RenderModel();
-
-        glBindVertexArray(0);
+        glUseProgram(0);
 
         mainWindow.swapBuffers();
         mainWindow.pollEvents();

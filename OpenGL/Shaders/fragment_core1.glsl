@@ -3,6 +3,7 @@
 in vec2 TexCoord;
 in vec3 Normal;
 in vec3 FragPos;
+in vec4 DirectionalLightSpacePos;
 
 out vec4 FragColor;
 
@@ -47,11 +48,26 @@ uniform PointLight pointLights[MAX_POINT_LIGHTS];
 uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
 
 uniform sampler2D theTexture;
+uniform sampler2D directionalShadowMap;
+
 uniform Material material;
 
 uniform vec3 eyePosition;
 
-vec3 CalcLightByDirection(Light light, vec3 direction)
+float CalcDirectionalShadowFactor(DirectionalLight light)
+{
+    vec3 projCoords = DirectionalLightSpacePos.xyz / DirectionalLightSpacePos.w;
+    projCoords = (projCoords * 0.5) + 0.5;
+
+    float closestDepth = texture(directionalShadowMap, projCoords.xy).r;
+    float currentDepth = projCoords.z;
+
+    float bias = 0.005;
+    float shadowFactor = currentDepth > closestDepth + bias ? 1.0 : 0.0;   
+    return shadowFactor;
+}
+
+vec3 CalcLightByDirection(Light light, vec3 direction, float shadowFactor)
 {
     vec3 N = normalize(Normal);
     vec3 L = normalize(direction);
@@ -72,11 +88,12 @@ vec3 CalcLightByDirection(Light light, vec3 direction)
     vec3 ambient = light.colour * light.ambientIntensity;
     vec3 diffuse = light.colour * light.diffuseIntensity * diff;
 
-    return ambient + diffuse + specularColour;
+    return ambient + (1.0 - shadowFactor) * (diffuse + specularColour);
 }
 
 vec3 CalcDirectionalLight() {
-    return CalcLightByDirection(directionalLight.base, directionalLight.direction);
+    float shadowFactor = CalcDirectionalShadowFactor(directionalLight);
+    return CalcLightByDirection(directionalLight.base, directionalLight.direction, shadowFactor);
 }
 
 vec3 CalcPointLight(PointLight pLight)
@@ -85,7 +102,7 @@ vec3 CalcPointLight(PointLight pLight)
         float distance = length(direction);
         direction = direction / distance;
 
-        vec3 lightColour = CalcLightByDirection(pLight.base, direction);
+        vec3 lightColour = CalcLightByDirection(pLight.base, direction, 0.0f);
         float attenuation = pLight.exponent * distance * distance +
                             pLight.linear * distance +
                             pLight.constant;

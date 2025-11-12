@@ -3,6 +3,7 @@
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <string>
 
 #include "CommonValues.h"
@@ -16,9 +17,24 @@ public:
     Shader();
     ~Shader();
 
+    // Utility functions
+    std::string ReadFile(const char* fileLocation);
+
+    // Get uniform locations for direct OpenGL use
+    GLuint GetProjectionLocation();
+    GLuint GetViewLocation();
+    GLuint GetModelLocation();
+
+    GLuint GetEyePositionLocation();
+
+    GLuint GetAmbientIntensityLocation();
+    GLuint GetAmbientColourLocation();
+    GLuint GetDiffuseIntensityLocation();
+    GLuint GetDirectionLocation();
+    GLuint GetSpecularIntensityLocation();
+    GLuint GetShininessLocation();
+
     void CreateFromFiles(const char* vertexShaderPath, const char* fragmentShaderPath);
-    void UseShader();
-    void ClearShader();
 
     // Uniform setters
     void setMat4(const std::string& name, const glm::mat4& mat);
@@ -28,22 +44,12 @@ public:
 	void SetPointLights(PointLight* pLight, unsigned int lightCount);
 	void SetSpotLights(SpotLight* sLight, unsigned int lightCount);
 
-    // Utility functions
-    std::string ReadFile(const char* fileLocation);
+	void SetTexture(GLuint textureUnit);
+	void SetDirectionalShadowMap(GLuint textureUnit);
+	void SetDirectionalLightTransform(const glm::mat4 &lTransform);
 
-    // Get uniform locations for direct OpenGL use
-    GLuint GetProjectionLocation();
-    GLuint GetViewLocation();
-    GLuint GetModelLocation();
-
-	GLuint GetEyePositionLocation();
-
-    GLuint GetAmbientIntensityLocation();
-    GLuint GetAmbientColourLocation();
-    GLuint GetDiffuseIntensityLocation();
-    GLuint GetDirectionLocation();
-	GLuint GetSpecularIntensityLocation();
-	GLuint GetShininessLocation();
+    void UseShader();
+    void ClearShader();
 
 private:
     int pointLightCount;
@@ -57,6 +63,8 @@ private:
     GLuint uniformEyePosition;
 
     GLuint uniformSpecularIntensity, uniformShininess;
+	GLuint uniformTexture;
+    GLuint uniformDirectionalLightTransform, uniformDirectionalShadowMap;
 
     struct {
         GLuint uniformColour;

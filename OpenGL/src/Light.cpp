@@ -1,18 +1,21 @@
 #include "Light.h"
+#include <iostream>
 
 Light::Light()
 {
-	colour = glm::vec3(1.0f, 1.0f, 1.0f);
-	ambientIntensity = 1.0f;
-	diffuseIntensity = 0.0f;
+    colour = glm::vec3(1.0f, 1.0f, 1.0f);
+    ambientIntensity = 1.0f;
+    diffuseIntensity = 0.0f;
 }
 
-Light::Light(GLfloat red, GLfloat green, GLfloat blue, GLfloat aIntensity, GLfloat dIntensity)
+Light::Light(GLfloat shadowWidth, GLfloat shadowHeight, GLfloat red, GLfloat green, GLfloat blue, GLfloat aIntensity, GLfloat dIntensity)
 {
-	colour = glm::vec3(red, green, blue);
-	ambientIntensity = aIntensity;
+    shadowMap = new ShadowMap();
+	shadowMap->Init(shadowWidth, shadowHeight);
+
+    colour = glm::vec3(red, green, blue);
+    ambientIntensity = aIntensity;
     diffuseIntensity = dIntensity;
 }
-
 
 Light::~Light() {}
