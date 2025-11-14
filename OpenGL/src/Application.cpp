@@ -1,4 +1,4 @@
-#include <glad/glad.h>
+﻿#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <stb/stb_image.h>
@@ -29,6 +29,8 @@
 #include "io/keyboard.h"
 #include "io/mouse.h"
 #include "io/camera.h"
+
+const float toRadians = 3.14159265f / 180.0f;
 
 // Use GLuint for uniform locations
 GLuint uniformSpecularIntensity = 0;
@@ -79,7 +81,7 @@ unsigned int pointLightCount = 0;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-unsigned int SCR_WIDTH = 1124, SCR_HEIGHT = 768;
+unsigned int SCR_WIDTH = 1366, SCR_HEIGHT = 768;
 float x, y, z;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -88,6 +90,9 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     SCR_HEIGHT = height;
 }
 
+GLfloat seahawkAngle = 0.0f;
+float seahawkAngularSpeed = 30.0f; // ↓ Set lower to decrease speed (was ~6 deg/s at 60 FPS with 0.1f/frame)
+    
 void processInput(GLFWwindow* mainWindow, double dt)
 {
     if (Keyboard::key(GLFW_KEY_ESCAPE))
@@ -146,7 +151,7 @@ void calcAverageNormals(unsigned int* indices, unsigned int indiceCount, GLfloat
 
         glm::vec3 v1(vertices[in1] - vertices[in0], vertices[in1 + 1] - vertices[in0 + 1], vertices[in1 + 2] - vertices[in0 + 2]);
         glm::vec3 v2(vertices[in2] - vertices[in0], vertices[in2 + 1] - vertices[in0 + 1], vertices[in2 + 2] - vertices[in0 + 2]);
-        glm::vec3 normal = glm::cross(v2, v1);
+        glm::vec3 normal = glm::cross(v1, v2);
         normal = glm::normalize(normal);
 
         vertices[in0 + normalOffset] += normal.x;
@@ -214,17 +219,17 @@ void CreateObject() {
          0.5f, -0.5f,  0.5f,   1.0f, 1.0f,  0,0,0,
         -0.5f, -0.5f,  0.5f,   0.0f, 1.0f,  0,0,0,
 
-         // Top - paste image exactly once
-         -0.5f,  0.5f, -0.5f,   0.0f, 0.0f,  0,0,0,
-          0.5f,  0.5f, -0.5f,   1.0f, 0.0f,  0,0,0,
-          0.5f,  0.5f,  0.5f,   1.0f, 1.0f,  0,0,0,
-         -0.5f,  0.5f,  0.5f,   0.0f, 1.0f,  0,0,0
+        // Top - paste image exactly once
+        -0.5f,  0.5f, -0.5f,   0.0f, 0.0f,  0,0,0,
+         0.5f,  0.5f, -0.5f,   1.0f, 0.0f,  0,0,0,
+         0.5f,  0.5f,  0.5f,   1.0f, 1.0f,  0,0,0,
+        -0.5f,  0.5f,  0.5f,   0.0f, 1.0f,  0,0,0
     };
 
     unsigned int floorIndices[] = {
-        0, 2, 1, 
+        0, 2, 1,
         1, 2, 3
-	};
+    };
 
     GLfloat floorVertices[] = {
        -10.0f, 0.0f, -10.0f,	0.0f, 0.0f,	    0.0f, 1.0f, 0.0f,
@@ -248,70 +253,78 @@ void CreateObject() {
     obj2->CreateMesh(vertices, indices, verticesCount, indicesCount);
     meshList.push_back(obj2);
 
-	Mesh* obj3 = new Mesh();
-	obj3->CreateMesh(floorVertices, floorIndices, 32, 6);
-	meshList.push_back(obj3);
+    Mesh* obj3 = new Mesh();
+    obj3->CreateMesh(floorVertices, floorIndices, 32, 6);
+    meshList.push_back(obj3);
 }
 
 
 void CreateShader()
 {
     Shader* shader1 = new Shader();
-    shader1->CreateFromFiles("Shaders/vertex_core.glsl", "Shaders/fragment_core1.glsl");
+    shader1->CreateFromFiles("Shaders/shader.vert", "Shaders/shader.frag");
     shaderList.push_back(*shader1);
 
-	directionalShadowShader = Shader();
+    directionalShadowShader = Shader();
     directionalShadowShader.CreateFromFiles("Shaders/directional_shadow_map.vert", "Shaders/directional_shadow_map.frag");
 }
 
-void RenderScene(bool forShadow = false)
+void RenderScene()
 {
-    //--- First CUBE at origin
-    glm::mat4 model1 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    shaderList[0].setMat4("model", model1);
-    shaderList[0].setInt("theTexture", 0);
+    glm::mat4 model(1.0f);
+
+    model = glm::translate(model, glm::vec3(0.0f, 0.0f, -2.5f));
+    glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
     brickTexture.UseTexture();
     shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
     meshList[0]->RenderMesh();
 
-    //--- Second CUBE translated+Y
-    glm::mat4 model2 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 5.0f, 0.0f));
-    model2 = glm::rotate(model2, static_cast<float>(glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
-    shaderList[0].setMat4("model", model2);
-    shaderList[0].setInt("theTexture", 0);
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(0.0f, 4.0f, -2.5f));
+	model = glm::rotate(model, static_cast<float>(glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
+    glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
     brickTexture.UseTexture();
-    shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+    dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
     meshList[1]->RenderMesh();
 
-    glm::mat4 model3 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 0.0f));
-    shaderList[0].setMat4("model", model3);
-    shaderList[0].setInt("theTexture", 0);
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
+    glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
     plainTexture.UseTexture();
     shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
     meshList[2]->RenderMesh();
 
-    glm::mat4 model4 = glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 0.0f, 0.0f));
-    model4 = glm::scale(model4, glm::vec3(0.05f, 0.05f, 0.05f));
-    shaderList[0].setMat4("model", model4);
+    seahawkAngle += seahawkAngularSpeed * deltaTime;
+    if (seahawkAngle >= 360.0f) {
+        seahawkAngle -= 360.0f;
+    }
+
+    model = glm::mat4(1.0f);
+    model = glm::rotate(model, -seahawkAngle * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::translate(model, glm::vec3(8.0f, 2.0f, 0.0f));
+    model = glm::rotate(model, -20.0f * toRadians, glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::scale(model, glm::vec3(0.03f, 0.03f, 0.03f));
+    glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
     shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
     seahawk.RenderModel();
 }
 
-void DirectionalShadowMapPass(DirectionalLight *light)
+void DirectionalShadowMapPass(DirectionalLight* light)
 {
     directionalShadowShader.UseShader();
 
-    glViewport(0, 0, light->GetShadowMap()->GetShadowWidth(), light->GetShadowMap()->GetShadowHeight());
+    glViewport(0, 0, light->getShadowMap()->GetShadowWidth(), light->getShadowMap()->GetShadowHeight());
 
-	light->GetShadowMap()->Write();
+    light->getShadowMap()->Write();
     glClear(GL_DEPTH_BUFFER_BIT);
 
-	uniformModel = directionalShadowShader.GetModelLocation();
-    directionalShadowShader.SetDirectionalLightTransform(light->CalculateLightTransform());
+    uniformModel = directionalShadowShader.GetModelLocation();
+    glm::mat4 lightTransform = light->CalculateLightTransform();
+    directionalShadowShader.SetDirectionalLightTransform(&lightTransform);
 
-    RenderScene(true);
+    RenderScene();
 
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
@@ -337,8 +350,10 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
     shaderList[0].SetDirectionalLight(&mainLight);
     shaderList[0].SetPointLights(pointLights, pointLightCount);
     shaderList[0].SetSpotLights(spotLights, spotLightCount);
-    shaderList[0].SetDirectionalLightTransform(mainLight.CalculateLightTransform());
-    mainLight.GetShadowMap()->Read(GL_TEXTURE1);
+    
+    glm::mat4 lightTransform = mainLight.CalculateLightTransform();
+    shaderList[0].SetDirectionalLightTransform(&lightTransform);
+    mainLight.getShadowMap()->Read(GL_TEXTURE1);
     shaderList[0].SetTexture(0);
     shaderList[0].SetDirectionalShadowMap(1);
 
@@ -346,7 +361,7 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
     lowerLight.y -= 0.3f;
     //spotLights[0].SetFlash(lowerLight, cameras[activeCam].getCameraDirection());
 
-	RenderScene(false);
+    RenderScene();
 }
 
 int main() {
@@ -378,21 +393,21 @@ int main() {
     brickTexture.LoadTextureA();
     dirtTexture = Texture("Textures/dirt.png");
     dirtTexture.LoadTextureA();
-	plainTexture = Texture("Textures/plain.png");
-	plainTexture.LoadTextureA();
+    plainTexture = Texture("Textures/plain.png");
+    plainTexture.LoadTextureA();
 
-	shinyMaterial = Material(1.0f, 256.0f);
-	dullMaterial = Material(0.3f, 4.0f);
+    shinyMaterial = Material(1.0f, 256.0f);
+    dullMaterial = Material(0.3f, 4.0f);
 
-	seahawk = Model();
-	seahawk.LoadModel("Models/Seahawk.obj");
+    seahawk = Model();
+    seahawk.LoadModel("Models/Seahawk.obj");
 
     // Directional light: white, some ambient + diffuse
     mainLight = DirectionalLight(
-		1024, 1024,           // shadow map dimensions
-        1.0f, 1.0f, 1.0f,      // color
-        0.3f, 0.6f,            // ambient, diffuse
-        0.0f, -7.0f, 0.0f      // direction
+        2048, 2048,                 // shadow map dimensions
+        1.0f, 1.0f, 1.0f,           // color
+        0.2f, 0.5f,                 // ambient, diffuse
+        0.0f, -15.0f, -10.0f        // direction
     );
 
     // Point light 0: blue-ish with small ambient, use friendlier attenuation
@@ -420,8 +435,8 @@ int main() {
         1.0f, 0.0f, 0.0f,        // attenuation (constant, linear, quadratic)
         20.0f                    // edge angle in degrees
     );
-	spotLightCount++;
-        
+    spotLightCount++;
+
     spotLights[1] = SpotLight(
         1.0f, 1.0f, 1.0f,        // color (white)
         0.0f, 1.0f,              // ambient, diffuse
@@ -447,7 +462,7 @@ int main() {
 
         // process input
         processInput(mainWindow.getWindow(), deltaTime);
-		DirectionalShadowMapPass(&mainLight);
+        DirectionalShadowMapPass(&mainLight);
 
         glm::mat4 view = cameras[activeCam].getViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(cameras[activeCam].zoom),
