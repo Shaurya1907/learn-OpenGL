@@ -37,11 +37,14 @@ GLuint uniformSpecularIntensity = 0;
 GLuint uniformShininess = 0;
 GLuint uniformEyePosition = 0;
 GLuint uniformProjection = 0, uniformView = 0, uniformModel = 0;
+GLuint uniformOmniLightPos = 0;
+GLuint uniformFarPlane = 0;
 
 std::vector<Mesh*> meshList;
 std::vector<Shader> shaderList;
 std::vector<Window> windowList;
 Shader directionalShadowShader;
+Shader omniShadowShader;
 
 // Cameras
 Camera cameras[2] = {
@@ -91,7 +94,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 }
 
 GLfloat seahawkAngle = 0.0f;
-float seahawkAngularSpeed = 30.0f; // ↓ Set lower to decrease speed (was ~6 deg/s at 60 FPS with 0.1f/frame)
+float seahawkAngularSpeed = 10.0f; // ↓ Set lower to decrease speed (was ~6 deg/s at 60 FPS with 0.1f/frame)
     
 void processInput(GLFWwindow* mainWindow, double dt)
 {
@@ -151,7 +154,7 @@ void calcAverageNormals(unsigned int* indices, unsigned int indiceCount, GLfloat
 
         glm::vec3 v1(vertices[in1] - vertices[in0], vertices[in1 + 1] - vertices[in0 + 1], vertices[in1 + 2] - vertices[in0 + 2]);
         glm::vec3 v2(vertices[in2] - vertices[in0], vertices[in2 + 1] - vertices[in0 + 1], vertices[in2 + 2] - vertices[in0 + 2]);
-        glm::vec3 normal = glm::cross(v1, v2);
+        glm::vec3 normal = glm::cross(v2, v1);
         normal = glm::normalize(normal);
 
         vertices[in0 + normalOffset] += normal.x;
@@ -266,7 +269,9 @@ void CreateShader()
     shaderList.push_back(*shader1);
 
     directionalShadowShader = Shader();
-    directionalShadowShader.CreateFromFiles("Shaders/directional_shadow_map.vert", "Shaders/directional_shadow_map.frag");
+	directionalShadowShader.CreateFromFiles("Shaders/directional_shadow_map.vert", "Shaders/directional_shadow_map.frag");
+    omniShadowShader.CreateFromFiles("Shaders/omni_shadow_map.vert","Shaders/omni_shadow_map.geom", "Shaders/omni_shadow_map.frag");
+
 }
 
 void RenderScene()
@@ -327,6 +332,28 @@ void DirectionalShadowMapPass(DirectionalLight* light)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+void OmniShadowMapPass(PointLight* light)
+{
+    omniShadowShader.UseShader();
+
+    glViewport(0, 0, light->getShadowMap()->GetShadowWidth(), light->getShadowMap()->GetShadowHeight());
+
+    light->getShadowMap()->Write();
+    glClear(GL_DEPTH_BUFFER_BIT);
+
+	uniformModel = omniShadowShader.GetModelLocation();
+    uniformOmniLightPos = omniShadowShader.GetOmniLightPosLocation();
+    uniformFarPlane = omniShadowShader.GetFarPlaneLocation();
+
+    glUniform3f(uniformOmniLightPos, light->GetPosition().x, light->GetPosition().y, light->GetPosition().z);
+    glUniform1f(uniformFarPlane, light->GetFarPlane());
+    omniShadowShader.SetLightMatrices(light->CalculateLightTransform());
+
+    RenderScene();
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 {
     shaderList[0].UseShader();
@@ -359,7 +386,7 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 
     glm::vec3 lowerLight = cameras[activeCam].getCameraPosition();
     lowerLight.y -= 0.3f;
-    //spotLights[0].SetFlash(lowerLight, cameras[activeCam].getCameraDirection());
+    spotLights[0].SetFlash(lowerLight, cameras[activeCam].getCameraDirection());
 
     RenderScene();
 }
@@ -407,27 +434,33 @@ int main() {
         2048, 2048,                 // shadow map dimensions
         1.0f, 1.0f, 1.0f,           // color
         0.2f, 0.5f,                 // ambient, diffuse
-        0.0f, -15.0f, -10.0f        // direction
+        0.0f, -15.0f, 10.0f         // direction
     );
 
     // Point light 0: blue-ish with small ambient, use friendlier attenuation
     pointLights[0] = PointLight(
-        0.0f, 0.0f, 1.0f,       // color
-        0.05f, 1.0f,            // ambient, diffuse
-        4.0f, 2.0f, 0.0f,       // position
-        1.0f, 0.09f, 0.032f     // attenuation (constant, linear, quadratic)
+		1024, 1024,              // shadow map dimensions
+		0.01, 100.0f,            // near, far planes
+        0.0f, 0.0f, 1.0f,        // color
+        0.05f, 1.0f,             // ambient, diffuse
+        4.0f, 2.0f, 0.0f,        // position
+        1.0f, 0.09f, 0.032f      // attenuation (constant, linear, quadratic)
     );
     pointLightCount++;
     // Point light 1: green-ish
     pointLights[1] = PointLight(
-        0.0f, 1.0f, 0.0f,    // color
-        0.05f, 1.0f,         // ambient, diffuse
-        -4.0f, 2.0f, 0.0f,   // position
-        1.0f, 0.09f, 0.032f  // attenuation (constant, linear, quadratic)2f
+		1024, 1024,                 // shadow map dimensions
+		0.01, 100.0f,               // near, far planes
+        0.0f, 1.0f, 0.0f,           // color
+        0.05f, 1.0f,                // ambient, diffuse
+        -4.0f, 2.0f, 0.0f,          // position
+        1.0f, 0.09f, 0.032f         // attenuation (constant, linear, quadratic)2f
     );
     pointLightCount++;
 
     spotLights[0] = SpotLight(
+        1024, 1024,              // shadow map dimensions
+        0.01, 100.0f,            // near, far planes
         1.0f, 1.0f, 1.0f,        // color (white)
         0.0f, 2.0f,              // ambient, diffuse
         0.0f, 0.0f, 0.0f,        // position
@@ -438,6 +471,8 @@ int main() {
     spotLightCount++;
 
     spotLights[1] = SpotLight(
+        1024, 1024,              // shadow map dimensions
+        0.01, 100.0f,            // near, far planes
         1.0f, 1.0f, 1.0f,        // color (white)
         0.0f, 1.0f,              // ambient, diffuse
         0.0f, 1.5f, 0.0f,        // position
@@ -468,6 +503,13 @@ int main() {
         glm::mat4 projection = glm::perspective(glm::radians(cameras[activeCam].zoom),
             static_cast<float>(SCR_WIDTH) / static_cast<float>(SCR_HEIGHT),
             0.1f, 100.0f);
+
+        for (size_t i = 0; i < pointLightCount; i++) {
+			OmniShadowMapPass(&pointLights[i]);
+        }
+        for(size_t i = 0; i < spotLightCount; i++) {
+            OmniShadowMapPass(&spotLights[i]);
+		}
 
         // Render pass
         RenderPass(projection, view);

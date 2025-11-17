@@ -69,6 +69,9 @@
     <ClCompile Include="src\ShadowMap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\OmniShadowMap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Shader.h">
@@ -119,6 +122,9 @@
     <ClInclude Include="src\ShadowMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\OmniShadowMap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\image.png">
@@ -143,5 +149,8 @@
     <None Include="Shaders\shader.vert" />
     <None Include="Shaders\directional_shadow_map.vert" />
     <None Include="Shaders\directional_shadow_map.frag" />
+    <None Include="Shaders\omni_shadow_map.frag" />
+    <None Include="Shaders\omni_shadow_map.geom" />
+    <None Include="Shaders\omni_shadow_map.vert" />
   </ItemGroup>
 </Project>
