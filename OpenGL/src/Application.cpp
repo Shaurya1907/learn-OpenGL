@@ -105,6 +105,10 @@ void processInput(GLFWwindow* mainWindow, double dt)
         activeCam += (activeCam == 0) ? 1 : -1;
     }
 
+    if (Keyboard::keyWentDown(GLFW_KEY_L)) {
+        spotLights[0].Toggle();
+    }
+
     // Move camera
     if (Keyboard::key(GLFW_KEY_W)) {
         cameras[activeCam].updateCameraPos(CameraDirection::FORWARD, dt);
@@ -306,8 +310,15 @@ void RenderScene()
 
     model = glm::mat4(1.0f);
     model = glm::rotate(model, -seahawkAngle * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::translate(model, glm::vec3(8.0f, 2.0f, 0.0f));
+    model = glm::translate(model, glm::vec3(8.0f, 1.0f, 0.0f));
     model = glm::rotate(model, -20.0f * toRadians, glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::scale(model, glm::vec3(0.03f, 0.03f, 0.03f));
+    glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+    shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+    seahawk.RenderModel();
+
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::scale(model, glm::vec3(0.03f, 0.03f, 0.03f));
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
     shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
@@ -326,6 +337,8 @@ void DirectionalShadowMapPass(DirectionalLight* light)
     uniformModel = directionalShadowShader.GetModelLocation();
     glm::mat4 lightTransform = light->CalculateLightTransform();
     directionalShadowShader.SetDirectionalLightTransform(&lightTransform);
+
+    directionalShadowShader.Validate();
 
     RenderScene();
 
@@ -348,6 +361,8 @@ void OmniShadowMapPass(PointLight* light)
     glUniform3f(uniformOmniLightPos, light->GetPosition().x, light->GetPosition().y, light->GetPosition().z);
     glUniform1f(uniformFarPlane, light->GetFarPlane());
     omniShadowShader.SetLightMatrices(light->CalculateLightTransform());
+
+    omniShadowShader.Validate();
 
     RenderScene();
 
@@ -375,18 +390,20 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
     glUniform3f(uniformEyePosition, cameras[activeCam].getCameraPosition().x, cameras[activeCam].getCameraPosition().y, cameras[activeCam].getCameraPosition().z);
 
     shaderList[0].SetDirectionalLight(&mainLight);
-    shaderList[0].SetPointLights(pointLights, pointLightCount);
-    shaderList[0].SetSpotLights(spotLights, spotLightCount);
+    shaderList[0].SetPointLights(pointLights, pointLightCount, 3, 0);
+    shaderList[0].SetSpotLights(spotLights, spotLightCount, 3 + pointLightCount, pointLightCount);
     
     glm::mat4 lightTransform = mainLight.CalculateLightTransform();
     shaderList[0].SetDirectionalLightTransform(&lightTransform);
-    mainLight.getShadowMap()->Read(GL_TEXTURE1);
-    shaderList[0].SetTexture(0);
-    shaderList[0].SetDirectionalShadowMap(1);
+    mainLight.getShadowMap()->Read(GL_TEXTURE2);
+    shaderList[0].SetTexture(1);
+    shaderList[0].SetDirectionalShadowMap(2);
 
     glm::vec3 lowerLight = cameras[activeCam].getCameraPosition();
     lowerLight.y -= 0.3f;
     spotLights[0].SetFlash(lowerLight, cameras[activeCam].getCameraDirection());
+
+    shaderList[0].Validate();
 
     RenderScene();
 }
@@ -431,30 +448,30 @@ int main() {
 
     // Directional light: white, some ambient + diffuse
     mainLight = DirectionalLight(
-        2048, 2048,                 // shadow map dimensions
-        1.0f, 1.0f, 1.0f,           // color
-        0.2f, 0.5f,                 // ambient, diffuse
-        0.0f, -15.0f, 10.0f         // direction
+        2048, 2048,                     // shadow map dimensions
+        1.0f, 1.0f, 1.0f,               // color
+        0.0f, 0.1f,                     // ambient, diffuse
+        0.0f, -15.0f, -10.0f            // direction
     );
 
     // Point light 0: blue-ish with small ambient, use friendlier attenuation
     pointLights[0] = PointLight(
-		1024, 1024,              // shadow map dimensions
-		0.01, 100.0f,            // near, far planes
-        0.0f, 0.0f, 1.0f,        // color
-        0.05f, 1.0f,             // ambient, diffuse
-        4.0f, 2.0f, 0.0f,        // position
-        1.0f, 0.09f, 0.032f      // attenuation (constant, linear, quadratic)
+		1024, 1024,                  // shadow map dimensions
+        0.1f, 100.0f,                // near, far planes
+        0.0f, 1.0f, 0.0f,            // color
+        0.0f, 0.4f,                  // ambient, diffuse
+        -2.0f, 10.0f, 0.0f,          // position
+        0.3f, 0.01f, 0.01f           // attenuation (constant, linear, quadratic)
     );
     pointLightCount++;
     // Point light 1: green-ish
     pointLights[1] = PointLight(
 		1024, 1024,                 // shadow map dimensions
-		0.01, 100.0f,               // near, far planes
-        0.0f, 1.0f, 0.0f,           // color
-        0.05f, 1.0f,                // ambient, diffuse
-        -4.0f, 2.0f, 0.0f,          // position
-        1.0f, 0.09f, 0.032f         // attenuation (constant, linear, quadratic)2f
+        0.1f, 100.0f,               // near, far planes
+        0.0f, 0.0f, 1.0f,           // color
+        0.0f, 0.4f,                 // ambient, diffuse
+        2.0f, 10.0f, 0.0f,          // position
+        0.3f, 0.01f, 0.01f          // attenuation (constant, linear, quadratic)2f
     );
     pointLightCount++;
 
@@ -462,7 +479,7 @@ int main() {
         1024, 1024,              // shadow map dimensions
         0.01, 100.0f,            // near, far planes
         1.0f, 1.0f, 1.0f,        // color (white)
-        0.0f, 2.0f,              // ambient, diffuse
+        0.0f, 1.0f,              // ambient, diffuse
         0.0f, 0.0f, 0.0f,        // position
         0.0f, -1.0f, 0.0f,       // direction
         1.0f, 0.0f, 0.0f,        // attenuation (constant, linear, quadratic)

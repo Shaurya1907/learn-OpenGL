@@ -72,7 +72,7 @@ bool Texture::LoadTextureA()
 
 void Texture::UseTexture(GLenum texUnit)
 {
-    glActiveTexture(texUnit);
+    glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, textureID);
 }
 
