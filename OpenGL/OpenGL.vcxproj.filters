@@ -72,6 +72,9 @@
     <ClCompile Include="src\OmniShadowMap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Skybox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Shader.h">
@@ -125,6 +128,9 @@
     <ClInclude Include="src\OmniShadowMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\Skybox.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\image.png">
@@ -152,5 +158,7 @@
     <None Include="Shaders\omni_shadow_map.frag" />
     <None Include="Shaders\omni_shadow_map.geom" />
     <None Include="Shaders\omni_shadow_map.vert" />
+    <None Include="Shaders\skybox.frag" />
+    <None Include="Shaders\skybox.vert" />
   </ItemGroup>
 </Project>

@@ -25,6 +25,7 @@
 #include "SpotLight.h"
 
 #include "Model.h"
+#include "Skybox.h"
 
 #include "io/keyboard.h"
 #include "io/mouse.h"
@@ -77,6 +78,9 @@ Model seahawk;
 DirectionalLight mainLight;
 PointLight pointLights[MAX_POINT_LIGHTS];
 SpotLight spotLights[MAX_SPOT_LIGHTS];
+
+// Skybox
+Skybox skybox;
 
 unsigned int spotLightCount = 0;
 unsigned int pointLightCount = 0;
@@ -299,7 +303,7 @@ void RenderScene()
     model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-    plainTexture.UseTexture();
+    dirtTexture.UseTexture();
     shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
     meshList[2]->RenderMesh();
 
@@ -371,6 +375,13 @@ void OmniShadowMapPass(PointLight* light)
 
 void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 {
+    glViewport(0, 0, 1366, 768);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	skybox.DrawSkybox(viewMatrix, projectionMatrix);
+
     shaderList[0].UseShader();
 
     uniformModel = shaderList[0].GetModelLocation();
@@ -379,11 +390,6 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
     uniformEyePosition = shaderList[0].GetEyePositionLocation();
     uniformSpecularIntensity = shaderList[0].GetSpecularIntensityLocation();
     uniformShininess = shaderList[0].GetShininessLocation();
-
-    glViewport(0, 0, 1366, 768);
-
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
     glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(viewMatrix));
@@ -450,7 +456,7 @@ int main() {
     mainLight = DirectionalLight(
         2048, 2048,                     // shadow map dimensions
         1.0f, 1.0f, 1.0f,               // color
-        0.0f, 0.1f,                     // ambient, diffuse
+        0.1f, 0.8f,                     // ambient, diffuse
         0.0f, -15.0f, -10.0f            // direction
     );
 
@@ -461,7 +467,7 @@ int main() {
         0.0f, 1.0f, 0.0f,            // color
         0.0f, 0.4f,                  // ambient, diffuse
         -2.0f, 10.0f, 0.0f,          // position
-        0.3f, 0.01f, 0.01f           // attenuation (constant, linear, quadratic)
+        0.3f, 0.02f, 0.01f           // attenuation (constant, linear, quadratic)
     );
     pointLightCount++;
     // Point light 1: green-ish
@@ -471,7 +477,7 @@ int main() {
         0.0f, 0.0f, 1.0f,           // color
         0.0f, 0.4f,                 // ambient, diffuse
         2.0f, 10.0f, 0.0f,          // position
-        0.3f, 0.01f, 0.01f          // attenuation (constant, linear, quadratic)2f
+        0.3f, 0.002f, 0.001f          // attenuation (constant, linear, quadratic)2f
     );
     pointLightCount++;
 
@@ -498,6 +504,16 @@ int main() {
         20.0f                    // edge angle in degrees
     );
     spotLightCount++;
+
+	std::vector<std::string> skyboxFaces;
+	skyboxFaces.push_back("Textures/Skybox/interstellar_rt.tga");
+	skyboxFaces.push_back("Textures/Skybox/interstellar_lf.tga");
+	skyboxFaces.push_back("Textures/Skybox/interstellar_up.tga");
+	skyboxFaces.push_back("Textures/Skybox/interstellar_dn.tga");
+	skyboxFaces.push_back("Textures/Skybox/interstellar_bk.tga");
+	skyboxFaces.push_back("Textures/Skybox/interstellar_ft.tga");
+
+	skybox = Skybox(skyboxFaces);
 
     x = 0.0f;
     y = 0.0f;
