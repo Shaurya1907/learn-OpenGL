@@ -5,14 +5,20 @@ Model::Model()
 {
 }
 
-void Model::RenderModel()
+void Model::RenderModel(bool wireframe)
 {
+	if (wireframe) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	}
 	for (size_t i = 0; i < meshList.size(); i++) {
 		GLuint materialIndex = meshToTex[i];
 		if (materialIndex < textureList.size() && textureList[materialIndex]) {
 			textureList[materialIndex]->UseTexture();
 		}
 		meshList[i]->RenderMesh();
+	}
+	if (wireframe) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}
 }
 

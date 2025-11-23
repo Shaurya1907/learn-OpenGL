@@ -10,15 +10,16 @@ Mesh::Mesh() {
 void Mesh::CreateMesh(GLfloat* vertices, GLuint* indices, unsigned int numOfVertices, unsigned int numOfIndices) {
     indexCount = numOfIndices;
 
+	// Vertex Array Object
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
 
-    // Vertex Buffer
+    // Vertex Buffer Object
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * numOfVertices, vertices, GL_STATIC_DRAW);
 
-    // Element Buffer (Indices)
+    // Element Buffer Object(Indices)
     glGenBuffers(1, &EBO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * numOfIndices, indices, GL_STATIC_DRAW);

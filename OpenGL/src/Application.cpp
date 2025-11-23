@@ -73,6 +73,7 @@ Material dullMaterial;
 
 // Models
 Model seahawk;
+Model AirPlane;
 
 // Light
 DirectionalLight mainLight;
@@ -88,8 +89,11 @@ unsigned int pointLightCount = 0;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-unsigned int SCR_WIDTH = 1366, SCR_HEIGHT = 768;
+unsigned int SCR_WIDTH = 1280, SCR_HEIGHT = 1024;
 float x, y, z;
+
+// WireFrame
+bool wireframeMode = false;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
@@ -98,7 +102,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 }
 
 GLfloat seahawkAngle = 0.0f;
-float seahawkAngularSpeed = 10.0f; // ↓ Set lower to decrease speed (was ~6 deg/s at 60 FPS with 0.1f/frame)
+float seahawkAngularSpeed = 10.0f; // Set lower to decrease speed (was ~6 deg/s at 60 FPS with 0.1f/frame)
     
 void processInput(GLFWwindow* mainWindow, double dt)
 {
@@ -111,6 +115,10 @@ void processInput(GLFWwindow* mainWindow, double dt)
 
     if (Keyboard::keyWentDown(GLFW_KEY_L)) {
         spotLights[0].Toggle();
+    }
+    if (Keyboard::keyWentDown(GLFW_KEY_T))
+    {
+        wireframeMode = !wireframeMode;
     }
 
     // Move camera
@@ -319,14 +327,24 @@ void RenderScene()
     model = glm::scale(model, glm::vec3(0.03f, 0.03f, 0.03f));
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
     shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-    seahawk.RenderModel();
+    seahawk.RenderModel(wireframeMode);
+
+    model = glm::mat4(1.0f);
+    model = glm::rotate(model, -seahawkAngle * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::translate(model, glm::vec3(-50.0f, 5.0f, 0.0f));
+    model = glm::rotate(model, -90.0f * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, 35.0f * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(0.006f, 0.006f, 0.006f));
+    glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+    shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+    AirPlane.RenderModel(wireframeMode);
 
     model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::scale(model, glm::vec3(0.03f, 0.03f, 0.03f));
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
     shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-    seahawk.RenderModel();
+    seahawk.RenderModel(wireframeMode);
 }
 
 void DirectionalShadowMapPass(DirectionalLight* light)
@@ -375,7 +393,7 @@ void OmniShadowMapPass(PointLight* light)
 
 void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 {
-    glViewport(0, 0, 1366, 768);
+    glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -452,12 +470,15 @@ int main() {
     seahawk = Model();
     seahawk.LoadModel("Models/Seahawk.obj");
 
+	AirPlane = Model();
+	AirPlane.LoadModel("Models/Airplane.obj");
+
     // Directional light: white, some ambient + diffuse
     mainLight = DirectionalLight(
-        2048, 2048,                     // shadow map dimensions
-        1.0f, 1.0f, 1.0f,               // color
-        0.1f, 0.8f,                     // ambient, diffuse
-        0.0f, -15.0f, -10.0f            // direction
+        2048, 2048,                  // shadow map dimensions
+        1.0f, 1.0f, 1.0f,            // color
+        0.1f, 0.8f,                  // ambient, diffuse
+        0.0f, -15.0f, -10.0f         // direction
     );
 
     // Point light 0: blue-ish with small ambient, use friendlier attenuation
@@ -466,7 +487,7 @@ int main() {
         0.1f, 100.0f,                // near, far planes
         0.0f, 1.0f, 0.0f,            // color
         0.0f, 0.4f,                  // ambient, diffuse
-        -2.0f, 10.0f, 0.0f,          // position
+        -2.0f, 3.0f, 0.0f,           // position
         0.3f, 0.02f, 0.01f           // attenuation (constant, linear, quadratic)
     );
     pointLightCount++;
@@ -476,8 +497,8 @@ int main() {
         0.1f, 100.0f,               // near, far planes
         0.0f, 0.0f, 1.0f,           // color
         0.0f, 0.4f,                 // ambient, diffuse
-        2.0f, 10.0f, 0.0f,          // position
-        0.3f, 0.002f, 0.001f          // attenuation (constant, linear, quadratic)2f
+        2.0f, 3.0f, 0.0f,           // position
+        0.3f, 0.002f, 0.001f        // attenuation (constant, linear, quadratic)2f
     );
     pointLightCount++;
 

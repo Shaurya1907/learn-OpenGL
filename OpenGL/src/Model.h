@@ -16,7 +16,7 @@ public:
 	Model();
 
 	void LoadModel(const std::string& fileName);
-	void RenderModel();
+	void RenderModel(bool wireframe = false);
 	void ClearModel();
 
 	~Model();
