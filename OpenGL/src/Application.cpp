@@ -79,7 +79,7 @@ Material dullMaterial;
 Model seahawk;
 Model AirPlane;
 Model Old_Water_Tower;
-Model Barn;
+Model cubus_faun_912_21d;
 
 // Light
 DirectionalLight mainLight;
@@ -347,11 +347,11 @@ void RenderScene()
     seahawk.RenderModel(wireframeMode);
 
     model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(-5.0f, 1.0f, 0.0f));
+    model = glm::translate(model, glm::vec3(-4.0f, 2.0f, 0.0f));
     model = glm::scale(model, glm::vec3(0.03f, 0.03f, 0.03f));
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
     shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-    seahawk.RenderModel(wireframeMode);
+    //seahawk.RenderModel(wireframeMode);
 
     model = glm::mat4(1.0f);
     model = glm::rotate(model, -seahawkAngle * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -369,6 +369,7 @@ void RenderScene()
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
     shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
     Old_Water_Tower.RenderModel(wireframeMode);
+
 }
 
 void DirectionalShadowMapPass(DirectionalLight* light, float angle)
@@ -629,15 +630,15 @@ int main() {
     );
     //spotLightCount++;
 
-	std::vector<std::string> skyboxFaces;
-	skyboxFaces.push_back("Textures/Skybox/interstellar_rt.tga");
-	skyboxFaces.push_back("Textures/Skybox/interstellar_lf.tga");
-	skyboxFaces.push_back("Textures/Skybox/interstellar_up.tga");
-	skyboxFaces.push_back("Textures/Skybox/interstellar_dn.tga");
-	skyboxFaces.push_back("Textures/Skybox/interstellar_bk.tga");
-	skyboxFaces.push_back("Textures/Skybox/interstellar_ft.tga");
+    std::vector<std::string> skyboxFaces;
+    skyboxFaces.push_back("Textures/Skybox/px.png"); // +X
+    skyboxFaces.push_back("Textures/Skybox/nx.png"); // -X
+    skyboxFaces.push_back("Textures/Skybox/py.png"); // +Y
+    skyboxFaces.push_back("Textures/Skybox/ny.png"); // -Y
+    skyboxFaces.push_back("Textures/Skybox/pz.png"); // +Z
+    skyboxFaces.push_back("Textures/Skybox/nz.png"); // -Z
 
-	skybox = Skybox(skyboxFaces);
+    skybox = Skybox(skyboxFaces);
 
     x = 0.0f;
     y = 0.0f;
@@ -651,7 +652,6 @@ int main() {
         deltaTime = static_cast<float>(currentTime - lastFrame);
         lastFrame = static_cast<float>(currentTime);
 
-        // Update sun
         sunAngle += sunSpeed * deltaTime;
         if (sunAngle > 6.28318f) sunAngle -= 6.28318f;
 
