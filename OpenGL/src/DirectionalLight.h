@@ -14,11 +14,14 @@ public:
 	void UseLight(GLfloat ambientIntensityLocation, GLfloat ambientColourLocation,
 		GLfloat diffuseIntensityLocation, GLfloat directionLocation);
 
-	glm::mat4 CalculateLightTransform();
+	void SetDirection(const glm::vec3& dir) { direction = dir; }
+	const glm::vec3& GetDirection() const { return direction; }
+
+	// UPDATED: Add angle parameter for orbiting light
+	glm::mat4 CalculateLightTransform(float angle = 0.0f);
 
 	~DirectionalLight();
 
-private:
+	glm::mat4 lightProj;
 	glm::vec3 direction;
 };
-

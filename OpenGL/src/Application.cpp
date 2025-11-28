@@ -41,6 +41,10 @@ GLuint uniformProjection = 0, uniformView = 0, uniformModel = 0;
 GLuint uniformOmniLightPos = 0;
 GLuint uniformFarPlane = 0;
 
+GLuint uniformLightView = 0;
+GLuint uniformLightProjection = 0;
+bool showLightView = true;  // Toggle with V key
+
 std::vector<Mesh*> meshList;
 std::vector<Shader> shaderList;
 std::vector<Window> windowList;
@@ -74,6 +78,8 @@ Material dullMaterial;
 // Models
 Model seahawk;
 Model AirPlane;
+Model Old_Water_Tower;
+Model Barn;
 
 // Light
 DirectionalLight mainLight;
@@ -88,6 +94,9 @@ unsigned int pointLightCount = 0;
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
+
+float sunAngle = 0.0f;
+float sunSpeed = 1.0f;
 
 unsigned int SCR_WIDTH = 1280, SCR_HEIGHT = 1024;
 float x, y, z;
@@ -119,6 +128,11 @@ void processInput(GLFWwindow* mainWindow, double dt)
     if (Keyboard::keyWentDown(GLFW_KEY_T))
     {
         wireframeMode = !wireframeMode;
+    }
+
+	// Light view toggle
+    if (Keyboard::keyWentDown(GLFW_KEY_V)) {
+        showLightView = !showLightView;
     }
 
     // Move camera
@@ -284,11 +298,14 @@ void CreateShader()
     shader1->CreateFromFiles("Shaders/shader.vert", "Shaders/shader.frag");
     shaderList.push_back(*shader1);
 
-    directionalShadowShader = Shader();
-	directionalShadowShader.CreateFromFiles("Shaders/directional_shadow_map.vert", "Shaders/directional_shadow_map.frag");
-    omniShadowShader.CreateFromFiles("Shaders/omni_shadow_map.vert","Shaders/omni_shadow_map.geom", "Shaders/omni_shadow_map.frag");
+    directionalShadowShader.CreateFromFiles("Shaders/directional_shadow_map.vert", "Shaders/directional_shadow_map.frag");
+    omniShadowShader.CreateFromFiles("Shaders/omni_shadow_map.vert", "Shaders/omni_shadow_map.geom", "Shaders/omni_shadow_map.frag");
 
+    // Initialize light viewport uniforms
+    uniformLightView = shaderList[0].GetViewLocation();
+    uniformLightProjection = shaderList[0].GetProjectionLocation();
 }
+
 
 void RenderScene()
 {
@@ -298,20 +315,20 @@ void RenderScene()
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
     brickTexture.UseTexture();
     shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-    meshList[0]->RenderMesh();
+    //meshList[0]->RenderMesh();
 
     model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(0.0f, 4.0f, -2.5f));
-	model = glm::rotate(model, static_cast<float>(glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
+	//model = glm::rotate(model, static_cast<float>(glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
     brickTexture.UseTexture();
     dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-    meshList[1]->RenderMesh();
+    //meshList[1]->RenderMesh();
 
     model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-    dirtTexture.UseTexture();
+    plainTexture.UseTexture();
     shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
     meshList[2]->RenderMesh();
 
@@ -322,8 +339,15 @@ void RenderScene()
 
     model = glm::mat4(1.0f);
     model = glm::rotate(model, -seahawkAngle * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::translate(model, glm::vec3(8.0f, 1.0f, 0.0f));
+    model = glm::translate(model, glm::vec3(15.0f, 1.0f, 0.0f));
     model = glm::rotate(model, -20.0f * toRadians, glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::scale(model, glm::vec3(0.03f, 0.03f, 0.03f));
+    glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+    shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+    seahawk.RenderModel(wireframeMode);
+
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(-5.0f, 1.0f, 0.0f));
     model = glm::scale(model, glm::vec3(0.03f, 0.03f, 0.03f));
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
     shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
@@ -340,32 +364,46 @@ void RenderScene()
     AirPlane.RenderModel(wireframeMode);
 
     model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.03f, 0.03f, 0.03f));
+    model = glm::translate(model, glm::vec3(0.0f, 2.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(0.3f, 0.3f, 0.3f));
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
     shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-    seahawk.RenderModel(wireframeMode);
+    Old_Water_Tower.RenderModel(wireframeMode);
 }
 
-void DirectionalShadowMapPass(DirectionalLight* light)
+void DirectionalShadowMapPass(DirectionalLight* light, float angle)
 {
     directionalShadowShader.UseShader();
 
     glViewport(0, 0, light->getShadowMap()->GetShadowWidth(), light->getShadowMap()->GetShadowHeight());
-
     light->getShadowMap()->Write();
     glClear(GL_DEPTH_BUFFER_BIT);
 
+    // IMPORTANT: set the global uniformModel to the depth shader's model location
     uniformModel = directionalShadowShader.GetModelLocation();
-    glm::mat4 lightTransform = light->CalculateLightTransform();
+
+    // Use the same light transform as the main pass
+    glm::mat4 lightTransform = light->CalculateLightTransform(angle);
     directionalShadowShader.SetDirectionalLightTransform(&lightTransform);
 
     directionalShadowShader.Validate();
 
+    // Optional: reduce self-shadowing (acne) by rendering front faces into the depth map
+    GLboolean wasCullEnabled = glIsEnabled(GL_CULL_FACE);
+    if (!wasCullEnabled) glEnable(GL_CULL_FACE);
+    glCullFace(GL_FRONT);
+
+    // Render ALL casters into the shadow map
     RenderScene();
+
+    // Restore cull state
+    glCullFace(GL_BACK);
+    if (!wasCullEnabled) glDisable(GL_CULL_FACE);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
+
+
 
 void OmniShadowMapPass(PointLight* light)
 {
@@ -391,7 +429,69 @@ void OmniShadowMapPass(PointLight* light)
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
+void RenderLightViewport()
+{
+    if (!showLightView) return;
+
+    // Mini viewport rectangle
+    const GLint vpX = static_cast<GLint>(SCR_WIDTH) - 320;
+    const GLint vpY = 5;
+    const GLsizei vpW = 300;
+    const GLsizei vpH = 300;
+
+    // Limit clear to the mini-viewport
+    glViewport(vpX, vpY, vpW, vpH);
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(vpX, vpY, vpW, vpH);
+    glClearColor(0.05f, 0.05f, 0.08f, 1.0f); // subtle background to make it visible
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glDisable(GL_SCISSOR_TEST);
+
+    // Use main scene shader for colorful output
+    shaderList[0].UseShader();
+
+    const GLuint modelLoc = shaderList[0].GetModelLocation();
+    const GLuint projLoc  = shaderList[0].GetProjectionLocation();
+    const GLuint viewLoc  = shaderList[0].GetViewLocation();
+    const GLuint eyeLoc = shaderList[0].GetEyePositionLocation();
+    const GLuint specLoc = shaderList[0].GetSpecularIntensityLocation();
+    const GLuint shineLoc = shaderList[0].GetShininessLocation();
+
+    // Construct a reasonable light camera for viewing
+    // Eye is opposite to light direction so we "look along" the light
+    const glm::vec3 lightDir = mainLight.GetDirection(); // ensure DirectionalLight exposes GetDirection()
+    const glm::vec3 eye      = -lightDir * 30.0f;        // pull back along direction
+    const glm::vec3 target   = glm::vec3(0.0f);
+    const glm::vec3 up       = glm::vec3(0.0f, 1.0f, 0.0f);
+
+    const glm::mat4 lightView = glm::lookAt(eye, target, up);
+
+    // If the light exposes its orthographic projection, prefer it; else use a small perspective.
+    // Replace with mainLight.GetLightProjection() if available.
+    const glm::mat4 lightProj = glm::ortho(-30.0f, 30.0f, -30.0f, 30.0f, 0.1f, 100.0f);
+
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(lightProj));
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(lightView));
+
+    glUniform3f(eyeLoc, eye.x, eye.y, eye.z);  // Light eye position
+    glUniform1f(specLoc, 1.0f);                // Specular intensity
+    glUniform1f(shineLoc, 256.0f);             // Shininess
+
+    // Lights/textures as normal
+    shaderList[0].SetDirectionalLight(&mainLight);
+    mainLight.getShadowMap()->Read(GL_TEXTURE2);
+    shaderList[0].SetDirectionalShadowMap(2);
+    shaderList[0].SetTexture(1);
+
+    shaderList[0].Validate();
+
+    // Render the scene into the mini viewport
+    RenderScene();
+
+    glUseProgram(0);
+}
+
+void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix, float sunAngle)
 {
     glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
@@ -417,7 +517,7 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
     shaderList[0].SetPointLights(pointLights, pointLightCount, 3, 0);
     shaderList[0].SetSpotLights(spotLights, spotLightCount, 3 + pointLightCount, pointLightCount);
     
-    glm::mat4 lightTransform = mainLight.CalculateLightTransform();
+    glm::mat4 lightTransform = mainLight.CalculateLightTransform(sunAngle);
     shaderList[0].SetDirectionalLightTransform(&lightTransform);
     mainLight.getShadowMap()->Read(GL_TEXTURE2);
     shaderList[0].SetTexture(1);
@@ -473,9 +573,12 @@ int main() {
 	AirPlane = Model();
 	AirPlane.LoadModel("Models/Airplane.obj");
 
+    Old_Water_Tower = Model();
+    Old_Water_Tower.LoadModel("Models/old_water_tower_OBJ.obj");
+
     // Directional light: white, some ambient + diffuse
     mainLight = DirectionalLight(
-        2048, 2048,                  // shadow map dimensions
+        4096, 4096,                  // shadow map dimensions
         1.0f, 1.0f, 1.0f,            // color
         0.1f, 0.8f,                  // ambient, diffuse
         0.0f, -15.0f, -10.0f         // direction
@@ -503,7 +606,7 @@ int main() {
     pointLightCount++;
 
     spotLights[0] = SpotLight(
-        1024, 1024,              // shadow map dimensions
+        4096, 4096,              // shadow map dimensions
         0.01, 100.0f,            // near, far planes
         1.0f, 1.0f, 1.0f,        // color (white)
         0.0f, 1.0f,              // ambient, diffuse
@@ -524,7 +627,7 @@ int main() {
         1.0f, 0.0f, 0.0f,        // attenuation (constant, linear, quadratic)
         20.0f                    // edge angle in degrees
     );
-    spotLightCount++;
+    //spotLightCount++;
 
 	std::vector<std::string> skyboxFaces;
 	skyboxFaces.push_back("Textures/Skybox/interstellar_rt.tga");
@@ -544,35 +647,48 @@ int main() {
 
     // Render loop
     while (!mainWindow.getShouldClose()) {
-
         double currentTime = glfwGetTime();
         deltaTime = static_cast<float>(currentTime - lastFrame);
         lastFrame = static_cast<float>(currentTime);
 
-        // process input
-        processInput(mainWindow.getWindow(), deltaTime);
-        DirectionalShadowMapPass(&mainLight);
+        // Update sun
+        sunAngle += sunSpeed * deltaTime;
+        if (sunAngle > 6.28318f) sunAngle -= 6.28318f;
 
+        float radius = 25.0f;
+        float fixedY = 15.0f;
+        float xPos = radius * cos(sunAngle);
+        float zPos = radius * sin(sunAngle);
+        glm::vec3 lightPos(xPos, fixedY, zPos);
+        glm::vec3 lightDir = glm::normalize(-lightPos);
+        mainLight.SetDirection(lightDir);
+
+        processInput(mainWindow.getWindow(), deltaTime);
+
+        // 1. Shadow passes FIRST
+        DirectionalShadowMapPass(&mainLight, sunAngle);
+        for (size_t i = 0; i < pointLightCount; i++) {
+            OmniShadowMapPass(&pointLights[i]);
+        }
+        for (size_t i = 0; i < spotLightCount; i++) {
+            OmniShadowMapPass(&spotLights[i]);
+        }
+
+        // 2. MAIN SCENE - clears entire screen ONCE
         glm::mat4 view = cameras[activeCam].getViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(cameras[activeCam].zoom),
-            static_cast<float>(SCR_WIDTH) / static_cast<float>(SCR_HEIGHT),
-            0.1f, 100.0f);
+            static_cast<float>(SCR_WIDTH) / static_cast<float>(SCR_HEIGHT), 0.1f, 100.0f);
+        RenderPass(projection, view, sunAngle);
 
-        for (size_t i = 0; i < pointLightCount; i++) {
-			OmniShadowMapPass(&pointLights[i]);
-        }
-        for(size_t i = 0; i < spotLightCount; i++) {
-            OmniShadowMapPass(&spotLights[i]);
-		}
-
-        // Render pass
-        RenderPass(projection, view);
+        // 3. LIGHT VIEWPORT - NO FULL CLEAR, only depth
+        glm::mat4 lightTransform = mainLight.CalculateLightTransform(sunAngle);
+        RenderLightViewport();  // Fixed call
 
         glUseProgram(0);
-
         mainWindow.swapBuffers();
         mainWindow.pollEvents();
     }
+
 
     // Cleanup BOTH meshes before exit
     for (auto mesh : meshList) {
