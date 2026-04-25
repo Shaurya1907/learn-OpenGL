@@ -1,4 +1,4 @@
-# 🚀 Learn-OpenGL — Custom C++ 3D Rendering Engine
+# 🚀 OpenGL — Custom C++ 3D Rendering Engine
 
 A **custom real-time 3D rendering engine** built from scratch in **C++ using Modern OpenGL**.
 
