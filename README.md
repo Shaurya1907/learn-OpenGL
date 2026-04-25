@@ -1,212 +1,206 @@
-# My C++ OpenGL 3D Engine 🚀
+# 🚀 Learn-OpenGL — Custom C++ 3D Rendering Engine
 
-# 
+A **custom real-time 3D rendering engine** built from scratch in **C++ using Modern OpenGL**.
 
-# A custom real-time 3D rendering engine built from scratch in C++ using modern OpenGL.
+Explore a small interactive 3D world featuring **dynamic lighting**, **real-time shadows**, a **day–night cycle**, **skybox rendering**, and **fully textured 3D models**.
 
-# Fly around a small 3D world with dynamic lighting, real-time shadows, a day–night cycle, skybox, and fully textured models.
+---
 
-# 
+# 🖼️ Screenshots
+
+## 🌅 Day–Night Cycle
+
+<p align="center">
+  <img src="assets/Day.png" width="45%" />
+  <img src="assets/Night.png" width="45%" />
+</p>
+
+---
+
+## 💡 Lighting & Shadows
+
+<p align="center">
+  <img src="assets/Lighting.png" width="45%" />
+  <img src="assets/Shadow.png" width="45%" />
+</p>
+
+---
+
+## 🔍 Shadow Debug View
+
+<p align="center">
+  <img src="assets/Light_View.png" width="60%" />
+</p>
+
+---
+
+## 🌌 Skybox Rendering
+
+<p align="center">
+  <img src="assets/GreenSkybox.png" width="45%" />
+  <img src="assets/BlueSkybox.png" width="45%" />
+</p>
+
+---
 
 # ✨ Features
 
-# Modern OpenGL (core profile, VAOs, VBOs, EBOs, depth testing)
+## 🎮 Rendering
 
-# 
+* Modern **OpenGL Core Profile**
+* VAO, VBO, EBO abstraction
+* Depth testing
+* Wireframe debug mode
 
-# Phong lighting model (ambient, diffuse, specular)
+## 💡 Lighting System
 
-# 
+* **Phong Lighting Model**
 
-# Directional, point, and spot lights
+  * Ambient
+  * Diffuse
+  * Specular
+* Light types:
 
-# 
+  * Directional
+  * Point
+  * Spot (flashlight)
 
-# Shadow mapping:
+## 🌑 Shadow Mapping
 
-# 
+* Directional shadow mapping
+* Omni-directional shadows
+* Real-time shadow rendering
+* Debug light-space view
 
-# Directional light shadow map
+## 🌅 Environment
 
-# 
+* Animated **Day–Night Cycle**
+* Moving sun (directional light)
+* Skybox using cubemaps
 
-# Omni shadow maps for point/spot lights
+## 🎥 Camera System
 
-# 
+* FPS-style movement
+* Mouse look
+* Zoom (FOV control)
+* Camera switching
 
-# Animated day–night cycle (moving “sun” directional light)
+## 🧱 Models & Materials
 
-# 
+* OBJ + MTL loading
+* Textured meshes
+* Material system (shininess, specular)
 
-# Skybox rendering with cubemap textures
 
-# 
+## 🎮 Input
 
-# Model loading (OBJ + MTL + textures)
+* Keyboard + mouse handling
+* Debug toggles
 
-# 
-
-# Textured floor and basic meshes
-
-# 
-
-# Material system (specular intensity, shininess control)
-
-# 
-
-# FPS-style camera system (movement + zoom)
-
-# 
-
-# Keyboard \& mouse input handling
-
-# 
+---
 
 # 🎮 Controls
 
-# WASD – Move camera
+| Key               | Action            |
+| ----------------- | ----------------- |
+| **W A S D**       | Move camera       |
+| **Space / Shift** | Up / Down         |
+| **Mouse**         | Look around       |
+| **Scroll**        | Zoom              |
+| **Tab**           | Switch camera     |
+| **L**             | Toggle flashlight |
+| **T**             | Wireframe mode    |
+| **V**             | Light debug view  |
+| **Esc**           | Quit              |
 
-# 
+---
 
-# Space / Left Shift – Move up / down
+# 🧰 Dependencies
 
-# 
+* GLFW
+* GLAD
+* GLM
+* stb_image
 
-# Mouse move – Look around
-
-# 
-
-# Mouse scroll – Zoom / change FOV
-
-# 
-
-# Tab – Switch camera
-
-# 
-
-# L – Toggle spotlight (flashlight)
-
-# 
-
-# T – Toggle wireframe mode
-
-# 
-
-# V – Toggle light-view debug viewport
-
-# 
-
-# Esc – Quit
-
-# 
+---
 
 # 🚧 Getting Started
 
-# Clone the repo:
+## Clone
 
-# git clone https://github.com/Shaurya1907/learn-OpenGL
+```bash
+git clone https://github.com/Shaurya1907/learn-OpenGL
+cd learn-OpenGL
+```
 
-# 
+## Run
 
-# Open the project in Visual Studio (or your favorite C++ IDE).
+* Open in **Visual Studio 2022**
+* Set startup project
+* Build & Run
 
-# 
+---
 
-# Make sure these dependencies are available:
+# 🧱 Project Structure
 
-# 
+```
+src/
 
-# GLFW
+main.cpp
+Window.*
+Shader.*
+Mesh.*
+Texture.*
 
-# 
+DirectionalLight.*
+PointLight.*
+SpotLight.*
 
-# GLAD
+Material.*
+Model.*
+Skybox.*
 
-# 
+io/
+  keyboard.*
+  mouse.*
+  camera.*
 
-# stb\_image
+Shaders/
+Textures/
+Models/
+```
 
-# 
+---
 
-# GLM
+# 🔍 Technical Highlights
 
-# 
+* Real-time shadow mapping
+* Multiple light types
+* Skybox rendering
+* Model loading pipeline
+* Camera system
+* Day–night simulation
 
-# Build \& run:
+---
 
-# 
+# 🎯 Future Improvements
 
-# Set the executable target as the startup project
+* [ ] PBR Rendering
+* [ ] HDR
+* [ ] Post-processing
+* [ ] Terrain
+* [ ] ImGui UI
+* [ ] Animations
+* [ ] Deferred rendering
 
-# 
-
-# Build in Debug or Release
-
-# 
-
-# Hit Run and explore the scene!
-
-# 
-
-# 🧱 Project Structure (high level)
-
-# src/
-
-# 
-
-# main.cpp – application entry + main loop
-
-# 
-
-# Window.\* – window and OpenGL context
-
-# 
-
-# Shader.\* – shader compilation + uniforms
-
-# 
-
-# Mesh.\* – VAO/VBO/EBO abstraction
-
-# 
-
-# Texture.\* – texture loading (stb\_image)
-
-# 
-
-# DirectionalLight.\* / PointLight.\* / SpotLight.\* – lights + shadow maps
-
-# 
-
-# Material.\* – material parameters
-
-# 
-
-# Model.\* – OBJ model loading \& rendering
-
-# 
-
-# Skybox.\* – cubemap skybox system
-
-# 
-
-# io/keyboard., io/mouse., io/camera.\* – input \& camera
-
-# 
-
-# Shaders/ – all GLSL shaders (lighting, shadows, skybox)
-
-# 
-
-# Textures/ – brick, dirt, plain, skybox cubemap faces
-
-# 
-
-# Models/ – Seahawk, Airplane, old water tower, and other test models
-
-# 
+---
 
 # 📜 License
 
-# This project is licensed under the MIT License – see the LICENSE file for details.
+MIT License — see LICENSE file
 
+---
+
+# ⭐ Support
+
+If you like this project, give it a **star ⭐**

@@ -24,7 +24,7 @@ void DirectionalLight::UseLight(GLfloat ambientIntensityLocation, GLfloat ambien
 	glUniform1f(diffuseIntensityLocation, diffuseIntensity);
 }
 
-// UPDATED: Support both fixed direction AND orbiting light with angle
+// Support both fixed direction AND orbiting light with angle
 glm::mat4 DirectionalLight::CalculateLightTransform(float angle)
 {
 	// Calculate light position on circular orbit around scene center (0,0,0)
