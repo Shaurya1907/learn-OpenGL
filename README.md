@@ -11,8 +11,8 @@ Explore a small interactive 3D world featuring **dynamic lighting**, **real-time
 ## 🌅 Day–Night Cycle
 
 <p align="center">
-  <img src="assets/Day.png" width="45%" />
-  <img src="assets/Night.png" width="45%" />
+  <img src="OpenGL/assets/Day.png" width="45%" />
+  <img src="OpenGL/assets/Night.png" width="45%" />
 </p>
 
 ---
@@ -20,8 +20,8 @@ Explore a small interactive 3D world featuring **dynamic lighting**, **real-time
 ## 💡 Lighting & Shadows
 
 <p align="center">
-  <img src="assets/Lighting.png" width="45%" />
-  <img src="assets/Shadow.png" width="45%" />
+  <img src="OpenGL/assets/Lighting.png" width="45%" />
+  <img src="OpenGL/assets/Shadow.png" width="45%" />
 </p>
 
 ---
@@ -29,7 +29,7 @@ Explore a small interactive 3D world featuring **dynamic lighting**, **real-time
 ## 🔍 Shadow Debug View
 
 <p align="center">
-  <img src="assets/Light_View.png" width="60%" />
+  <img src="OpenGL/assets/Light_View.png" width="60%" />
 </p>
 
 ---
@@ -37,8 +37,8 @@ Explore a small interactive 3D world featuring **dynamic lighting**, **real-time
 ## 🌌 Skybox Rendering
 
 <p align="center">
-  <img src="assets/GreenSkybox.png" width="45%" />
-  <img src="assets/BlueSkybox.png" width="45%" />
+  <img src="OpenGL/assets/GreenSkybox.png" width="45%" />
+  <img src="OpenGL/assets/BlueSkybox.png" width="45%" />
 </p>
 
 ---
@@ -197,10 +197,6 @@ Models/
 
 # 📜 License
 
-MIT License — see LICENSE file
+This project is licensed under the **MIT License** — see the  
+[Licence.txt](Licence.txt) file for details.
 
----
-
-# ⭐ Support
-
-If you like this project, give it a **star ⭐**
